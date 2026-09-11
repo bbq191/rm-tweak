@@ -1,0 +1,41 @@
+[Unit]
+Description=cang-jie: 开机后自动重跑 xovi/start，重新注入全部 xovi 扩展（hl-snap/handwriting-stroke/中文化…通用，非专属某一条线）
+Documentation=https://github.com/asivery/xovi
+# /etc 是 overlay（upperdir 在 /var/volatile tmpfs），真机重启即清——xovi 的 LD_PRELOAD 配置
+# （00-xovi.conf 等）跟着一起丢，不手动跑一次 /home/root/xovi/start（vellum add xovi 自带的
+# 工具，本单元不重新实现它，只是帮用户自动跑一遍）就不会重新生效。
+#
+# ⚠️ 绝不给 xochitl.service 本体加任何依赖（安全红线：2026-08-15 真机曾因给 xochitl 加 /home
+# 依赖导致 watchdog 超时→重启循环→变砖）。本单元只是
+# 单向等待 xochitl.service/home.mount 先起来，xochitl 完全不知道这个单元的存在、不因它失败而
+# 受影响。/home 是加密盘，挂载可能晚于 xochitl 裸启动，所以让 xochitl 先用原厂状态起来，本单元
+# 再在后面把 xovi 补上去（重启一次 xochitl，非关键路径，失败也不影响开机）。
+#
+# ConditionPathExists 保证没跑过 `vellum add xovi`（/home/root/xovi/start 不存在）时，systemd
+# 判定为"跳过"而非"失败"——不会在没装 xovi 的机器上报错刷屏。
+After=home.mount xochitl.service
+Wants=home.mount
+ConditionPathExists=/home/root/xovi/start
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# ⚠️ xovi 已经在运行的 xochitl 里生效时**绝不能再跑 xovi/start**（会让运行中的 xochitl SEGV → OnFailure=emergency
+# → 整机重启，2026-09-20 真机踩过）。开机后 xochitl 是原厂状态起来的（/etc overlay 已清），不含 xovi.so；
+# 若本单元被手动重跑/被别的机制二次拉起时 xovi 早已生效，就跳过。判据=xochitl 主进程的内存映射里有没有
+# xovi.so（/proc/<pid>/maps 是纯文本、busybox 也能 grep）。ExecCondition 退出码 1–254 ＝ 单元被"跳过"
+# 而不是"失败"（systemd ≥ 243；设备是 255）；xochitl 没在跑（MainPID=0，路径不存在）时 grep 报错、
+# 取反后为真 → 照常执行 xovi/start。`$$` 是 systemd 里的字面 `$`。
+ExecCondition=/bin/sh -c '! grep -q "xovi[.]so" /proc/$$(systemctl show -p MainPID --value xochitl.service)/maps 2>/dev/null'
+# 待换入区（~/.cangjie-stage/so-pending/，部署时 xochitl 正映射着旧版而暂放的新 .so）在这里换进 extensions.d
+# （2026-09-25）：此刻 ExecCondition 已确认 xochitl 没带 xovi、没映射任何扩展，换文件安全；这样用户自己 reboot 也能让
+# 新版生效，不必非走 deploy-xovi-apply。待换入区与 extensions.d 同在 /home，mv 是原子 rename，extensions.d 里不会出现
+# 半截/临时文件（xovi 会把目录里任何文件当扩展加载）。只挪普通文件；前缀 `-`＝失败不挡 xovi/start。
+ExecStartPre=-/bin/sh -c 'd=/home/root/.cangjie-stage/so-pending; [ -d "$$d" ] || exit 0; for f in "$$d"/*; do [ -f "$$f" ] && [ ! -L "$$f" ] || continue; chmod 755 "$$f" && mv -f "$$f" /home/root/xovi/extensions.d/ && echo "xovi-reenable: 换入 $${f##*/}"; done; rmdir "$$d" 2>/dev/null; exit 0'
+ExecStart=/home/root/xovi/start
+# oneshot 缺省启动超时是 infinity。书架/笔记/增强各服务 After= 本单元（2026-09-24 起，让 xochitl 先带 xovi 起来再起它们），
+# 万一 xovi/start 卡住，它们会跟着永远等——给个上限。xovi/start 平时约 3 秒跑完（真机 09-24 开机 2.7s）。
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,41 @@
+# cang-jie: 开机头几十秒防自动休眠打断 chronyd 首次校时。
+#
+# 根因（2026-09-14 真机坐实，见 packaging/README.md「验证现状」）：`remarkable-enable-slumber.service`
+# （reMarkable 官方单元，`After=xochitl.service`）在开机后几十秒内就 `echo mem > /sys/power/autosleep`
+# 打开自动休眠；这台设备离 USB/触屏几秒就真的挂起（deep sleep）。chronyd 首次拿到 NTP 源、正准备
+# `makestep` 校正系统钟的这几十秒窗口，一旦撞上这次挂起/唤醒，chrony 自己的时钟连续性模型会把这次
+# "被挂起打断"误判成"外部时间跳变"（chrony 上游原话：clock jumped outside of chronyd's control
+# → drop all measurements and start from scratch），进入越来越长的失败退避——`timedatectl` 的
+# `synchronized` 标志因此可能卡在 no 长达十几分钟，但系统钟本身其实是准的，纯粹是这个"重试计数器"
+# 被反复打断重置。不是 chrony.conf 配错，也不是这次改的 NTP 服务器列表的问题，是这台设备的自动休眠
+# 节奏跟 chronyd 首次同步窗口撞车。
+#
+# 修法：不碰 remarkable-enable-slumber.service 本身（红线——改核心服务的启动依赖/时机，一旦推演
+# 有误就是真机变砖级别的事故），只加这个独立的新单元：开机后持一把
+# `/sys/power/wake_lock`（标准 Linux wakelock 接口，持锁期间内核不会真的休眠），让 chronyd 有一段
+# 不被打断的窗口跑完首次同步；`Before=remarkable-enable-slumber.service` 让自动休眠晚几十秒才打开，
+# 不影响它最终生效，只是开机头这一小段窗口往后挪。纯排序声明（`Before=`/`After=`，不是
+# `Requires=`），这个单元本身失败/缺失/超时都不会拖累 slumber 服务或任何其它单元——最坏情况是
+# 退回没有这层保护之前的样子（chrony 慢几分钟才报 synced），不会引发级联故障。
+[Unit]
+Description=cang-jie: hold a wakelock so chronyd's first sync is not interrupted by early autosuspend
+After=chronyd.service
+Before=remarkable-enable-slumber.service
+ConditionPathExists=/sys/power/wake_lock
+
+[Service]
+Type=oneshot
+# 轮询 timedatectl 的 NTPSynchronized，成功即提前放锁；120 秒（60×2s）还没同步也放锁退出——
+# 不管结果如何都不长期占着这把锁（trap 保证：就算被 systemd 中途 SIGTERM 也会先放锁再退出，
+# 绝不会把锁永久占着导致设备再也不自动休眠）。TERM/INT 只做 `exit`、放锁交给 EXIT trap——旧版把放锁命令直接挂在
+# TERM 上，处理完信号 shell 还接着轮询，没网时关机/重启要等到 systemd 的停止超时（缺省 90 秒）才 SIGKILL（2026-09-25 审计）。
+ExecStart=/bin/sh -c 'trap "echo cangjie-chrony-boot > /sys/power/wake_unlock 2>/dev/null" EXIT; trap "exit 143" TERM INT; \
+    echo cangjie-chrony-boot > /sys/power/wake_lock; \
+    i=0; while [ "$i" -lt 60 ]; do \
+        [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = "yes" ] && break; \
+        i=$((i + 1)); sleep 2; \
+    done'
+TimeoutStartSec=150
+
+[Install]
+WantedBy=multi-user.target

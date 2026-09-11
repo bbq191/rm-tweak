@@ -1,0 +1,75 @@
+; ─────────────────────────────────────────────────────────────────────────
+; shelf-comic-margins.qmd —— 漫画「页边距」代理（固件 3.28 线，2026-09-21）。
+;
+; 【要解决的事】EPUB 漫画在 xochitl 里被画成一个固定的"图片框"：栏宽 = 页宽 − 2×页边距，垂直高度固定。默认边距 56 时
+;   图片只有 267pt 宽（页宽 303pt）；边距设成 1（几乎为 0）并把图片补白成 302.4:462.1，图片几乎铺满页宽，左右留白约 0.3/0.7pt
+;   （详见 bookconv 白皮书 §20）。边距是阅读器"文字设置 → 页边距"里的设置，界面只有 28/56/112 三档，但
+;   `EpubProperties.setMargins(任意数值)` 接受 0 也接受 1（真机实测；用户认为 0 贴边不合适，取 1）。
+;
+; 【为什么必须在 xochitl 里做】外部改文档 `.content` 的 `margins` 会被运行中 xochitl 的内存状态盖回去（真机 5 次实验只成功 1 次）。
+;   只有走 xochitl 自己的代码路径才可靠——这里调用的就是界面点"页边距"那一下用的 `epub.setMargins(...)`
+;   （xofm.libs.epub 的 EpubProperties，源码在 `FormatMargins.qml` / `FormatSettings.qml`，2026-09-21 从固件里提取）。
+;
+; 【做法】书打开（DocumentView.document 变化）1.5 秒后，`GET http://127.0.0.1:8790/margins/<uuid>`（book-serve，见
+;   `comic_margins.rs`）：404 = 不是我们登记的漫画，什么都不做；200 = 应设的边距 → 用 `EpubProperties` 调 `setMargins`，
+;   再 `POST /margins/applied` 销账——**每本书只设一次**，之后用户自己在界面改回去不会被干预。
+;   `EpubProperties` 只在命中时才 createObject（不在视图创建时实例化，避免 document 为空时构造）。
+;
+; 【注意】`document.id` 是值类型，不是 JS 字符串：拼接能显示，`===` 恒假，必须先 `String(...)`（真机踩过）。
+; 生效需要重启 xochitl（qmd 只在启动时加载）。是否启用由网页「实验室→漫画页边距最小化」开关决定：book-serve 在开关关着时对 GET 一律回 404，本代理就什么都不做。
+; ─────────────────────────────────────────────────────────────────────────
+AFFECT /qml/device/view/documentview/DocumentView.qml
+
+    TRAVERSE ?#root
+        LOCATE AFTER ChapterPositionTracker#chapterPositionTracker
+        INSERT {
+            Component {
+                id: cjMarginEpComp
+                EpubProperties {
+                    document: root.document
+                    documentController: DocumentController
+                    settings: root.epubSettings
+                }
+            }
+            Connections {
+                target: root
+                function onDocumentChanged() { cjMarginOpenTimer.restart(); }
+            }
+            Timer {
+                id: cjMarginOpenTimer
+                interval: 1500
+                repeat: false
+                onTriggered: {
+                    if (!root.document) { return; }
+                    var did = String(root.document.id).replace(/[{}]/g, "");
+                    var x = new XMLHttpRequest();
+                    x.onreadystatechange = function() {
+                        if (x.readyState !== XMLHttpRequest.DONE || x.status !== 200) { return; }
+                        try {
+                            var m = JSON.parse(x.responseText).margins;
+                            if (typeof m !== "number") { return; }
+                            if (!root.document || String(root.document.id).replace(/[{}]/g, "") !== did) { return; }
+                            var ep = cjMarginEpComp.createObject(root);
+                            if (!ep) { return; }
+                            // 先排好 5 秒后销毁：下面任何一步抛异常都不会让这个对象一直挂在 root 上。
+                            ep.destroy(5000);
+                            if (ep.margins !== m) {
+                                ep.setMargins(m);
+                                console.warn("CJ-COMIC-MARGIN: " + did + " margins -> " + m);
+                            }
+                            var a = new XMLHttpRequest();
+                            a.open("POST", "http://127.0.0.1:8790/margins/applied");
+                            a.setRequestHeader("Content-Type", "application/json");
+                            a.send(JSON.stringify({ uuid: did }));
+                        } catch (e) {
+                            console.warn("CJ-COMIC-MARGIN: failed " + e);
+                        }
+                    };
+                    x.open("GET", "http://127.0.0.1:8790/margins/" + did);
+                    x.send();
+                }
+            }
+        }
+    END TRAVERSE
+
+END AFFECT

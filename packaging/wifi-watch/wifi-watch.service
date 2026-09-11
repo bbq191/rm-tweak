@@ -1,0 +1,14 @@
+[Unit]
+Description=wifi-watch：wlan0 载波死了而 NetworkManager 仍标 connected 时 nmcli con up（slumber 醒来常见）
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+ExecStart=/bin/sh /home/root/.local/bin/wifi-watch.sh
+Restart=always
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

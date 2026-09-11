@@ -1,0 +1,60 @@
+% 测试夹具：入库 PDF「优化」新功能的真实样本（2026-09-19）。用 pdflatex 编译出一份带真实
+% cmmi/cmsy/cmex 数学字体（amsmath 公式）、不同字号标题层级（\section/\subsection）、一张
+% 嵌入图片的 PDF——不是拍脑袋合成，是"无文字层判定阈值"/"字号识别标题阈值"/"公式字体识别"
+% 这几处启发式系数落地前核对用的真实样本。故意不用 \tableofcontents（这份 PDF 就是要测
+% "没有书签目录、靠字号识别标题"那条兜底路径；另有 lopdf 编程构造的合成夹具专测"有 /Outlines"
+% 分支）。
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[margin=2cm]{geometry}
+\pagestyle{empty}
+
+\begin{document}
+
+\section{Introduction}
+
+This is the introductory paragraph of a small test document. It contains enough running
+text to make average per-page character counts meaningful for text-layer detection. The
+quick brown fox jumps over the lazy dog, repeated a few times to pad out the body text so
+that this page does not look like a comic page dominated by a single large image.
+
+Inline math example: the identity $e^{i\pi} + 1 = 0$ is one of the most celebrated results
+in mathematics, and the quadratic formula $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$ is another
+one students see early on.
+
+\subsection{A subsection with more prose}
+
+More body text here, again padding out the paragraph so per-page text density stays well
+above a comic-detection threshold. Numbers and words mixed together: 12345, lorem ipsum
+dolor sit amet, consectetur adipiscing elit.
+
+\clearpage
+\section{A multi-line display formula}
+
+Here is a display-mode equation spanning multiple visual lines, which should get merged
+into a single formula bounding block by the region-detection logic:
+\begin{align*}
+  \int_0^\infty e^{-x^2}\,dx &= \frac{\sqrt{\pi}}{2} \\
+  \sum_{n=1}^{\infty} \frac{1}{n^2} &= \frac{\pi^2}{6} \\
+  \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+  \begin{pmatrix} x \\ y \end{pmatrix}
+  &=
+  \begin{pmatrix} ax+by \\ cx+dy \end{pmatrix}
+\end{align*}
+
+\subsection{An embedded figure}
+
+Below is an embedded raster image, to exercise the image-extraction path:
+
+\includegraphics[width=4cm]{fig1.png}
+
+\clearpage
+\section{Conclusion}
+
+\subsection{Closing remarks}
+
+A final short section with a bit more body text and one more inline symbol, $\alpha + \beta
+= \gamma$, to close out the document with a mix of prose and math on the same page.
+
+\end{document}

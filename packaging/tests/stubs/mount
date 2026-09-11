@@ -1,0 +1,6 @@
+#!/bin/sh
+echo "mount $*" >> "${CJ_SIM_LOG:-/dev/null}"
+case "$*" in
+    *remount,rw*) [ -n "${CJ_SIM_RW_FAIL:-}" ] && exit 1 ;;
+esac
+exit 0

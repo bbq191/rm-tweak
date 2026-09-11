@@ -1,0 +1,91 @@
+//! 用量账本 `~/.local/state/notes/transcribe.json`：调用/成功/失败次数、token 累计、最近一次错误与一轮报告。
+//! 只记数不记内容（不存 key、不存转写文本）。
+//! **存取逻辑共享给 mind-serve**（`vendorcfg::usage`，2026-09-08 抽出来，之前两边各抄一遍）——这里只
+//! 定义这条服务独有的东西：`RunReport`（一轮批量转写的结果，mind-serve 没有批量轮次，不需要它）。
+//! `Usage`/`Ledger` 是 `vendorcfg` 泛型在 `RunReport` 上的具体实例化。
+//! **第二轮整理区反馈（2026-09-08，点 2）**：按模型分账（`by_model`，键是 `TranscribeConfig::usage_key()`——
+//! 预置 id 或 `custom:<model>`）——同一个服务现在能在多家厂商之间切换预置，"各个模型的用量花费 profile"
+//! 要求每个用过的模型各算各的，不能只有一份全局聚合数字（不然切个模型历史用量就混一起分不清了）。
+use serde::{Deserialize, Serialize};
+
+/// 一轮转写的结果（网页状态区显示）。
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RunReport {
+    pub at: u64,
+    pub scanned: usize,
+    pub done: usize,
+    pub failed: usize,
+    pub skipped: usize,
+    pub left: usize,
+    /// 这一轮成功调用累计花的 token（点「重转」弹出消耗要用，2026-09-08 第三轮反馈）——强制单条时
+    /// 这轮只有一次成功调用，这两个数就是那一次调用的实际消耗；批量跑一轮时是整轮的累计。
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+    pub note: String,
+}
+
+pub type Ledger = vendorcfg::Ledger<RunReport>;
+
+/// 记下一轮报告；本轮没调用模型（`done`/`failed` 都是 0）且跟上一轮除时间外完全相同（最常见：自动模式被 `entries` 事件踢醒、却没有待转写的条目；
+/// 或没配 key 时每次都是同一句提示）就不落盘，返回 `false`，调用方据此也不发 `transcribe` 事件——
+/// 网页每收到一条 `notes` 事件都会整页重拉，空跑一轮不该再写一次闪存、再惹一轮刷新（2026-09-24 第三轮审计）。
+pub fn record_if_new(ledger: &Ledger, r: &RunReport) -> bool {
+    let same = r.done == 0 && r.failed == 0 && ledger.snapshot().last_run.is_some_and(|last| RunReport { at: r.at, ..last } == *r);
+    if !same {
+        ledger.record_run(r.clone());
+    }
+    !same
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn persists_counts_per_model() {
+        let t = tempfile::tempdir().unwrap();
+        let p = t.path().join("transcribe.json");
+        let l = Ledger::open(&p);
+        l.record_ok("qwen3-vl-plus", 100, 5, 1);
+        l.record_fail("qwen3-vl-plus", "HTTP 401：bad key", 2);
+        l.record_ok("gpt-5.6-terra", 50, 10, 3);
+        l.record_run(RunReport { at: 2, scanned: 2, done: 1, failed: 1, ..Default::default() });
+        let back = Ledger::open(&p).snapshot();
+        let qwen = &back.by_model["qwen3-vl-plus"];
+        assert_eq!((qwen.calls, qwen.ok, qwen.failed, qwen.prompt_tokens, qwen.completion_tokens), (2, 1, 1, 100, 5));
+        assert_eq!(qwen.last_error, "HTTP 401：bad key");
+        let gpt = &back.by_model["gpt-5.6-terra"];
+        assert_eq!((gpt.calls, gpt.ok, gpt.prompt_tokens), (1, 1, 50), "不同模型各算各的，不会混到一起");
+        assert_eq!(back.last_run.unwrap().done, 1);
+    }
+
+    #[test]
+    fn record_if_new_skips_identical_idle_rounds() {
+        let t = tempfile::tempdir().unwrap();
+        let p = t.path().join("transcribe.json");
+        let l = Ledger::open(&p);
+        let idle = |at| RunReport { at, ..Default::default() };
+        assert!(record_if_new(&l, &idle(1)), "头一轮总要记");
+        assert!(!record_if_new(&l, &idle(2)), "空跑且跟上轮一样：不落盘");
+        assert_eq!(l.snapshot().last_run.unwrap().at, 1);
+        let note = RunReport { at: 3, note: "未配置 API key".into(), ..Default::default() };
+        assert!(record_if_new(&l, &note), "内容变了要记");
+        assert!(!record_if_new(&l, &RunReport { at: 4, ..note.clone() }));
+        let failed = RunReport { at: 5, scanned: 1, failed: 1, ..Default::default() };
+        assert!(record_if_new(&l, &failed));
+        assert!(record_if_new(&l, &RunReport { at: 6, ..failed }), "真调过模型的轮次一律记（失败清单/用量变了，网页要刷新）");
+    }
+
+    /// 真机 2026-09-08 实测采样的 transcribe.json 用量账本形状（数值原样，非敏感）：`byModel` +
+    /// `lastRun` 都要原样读出来——这是重构最要紧的一条回归，真机上已经有累计的真实用量数字。
+    #[test]
+    fn reads_real_device_ledger_shape_unchanged() {
+        let t = tempfile::tempdir().unwrap();
+        let p = t.path().join("transcribe.json");
+        std::fs::write(&p, r#"{"byModel":{"qwen3-vl-plus":{"calls":8,"ok":8,"failed":0,"promptTokens":2528,"completionTokens":104,"lastAt":1788853946,"lastError":""}},"lastRun":{"at":1788853946,"scanned":1,"done":1,"failed":0,"skipped":0,"left":0,"promptTokens":316,"completionTokens":13,"note":""}}"#).unwrap();
+        let back = Ledger::open(&p).snapshot();
+        let m = &back.by_model["qwen3-vl-plus"];
+        assert_eq!((m.calls, m.ok, m.prompt_tokens, m.completion_tokens), (8, 8, 2528, 104));
+        assert_eq!(back.last_run.unwrap().prompt_tokens, 316);
+    }
+}

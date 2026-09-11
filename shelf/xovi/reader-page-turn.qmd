@@ -1,0 +1,183 @@
+; ─────────────────────────────────────────────────────────────────────────
+; reader-page-turn.qmd —— xochitl 阅读器：单击翻页 + 日漫翻页规则（固件 3.28.0.172，2026-09-24）
+;
+; 【两个功能，各自一个网页开关，都在「管理 → 系统增强」，默认都关】
+;   · tapPageTurn：点屏幕左右边缘翻页。区域 = 左右各 7% 宽、纵向只在屏幕高度 45%–80% 之间（用户定；
+;     避开顶部工具栏、底部进度条和握持的四角）。其余位置交回原生逻辑（双击进文本、点链接、选图照常）。
+;   · rtlPageTurn：书的 EPUB 在 OPF 里标了 page-progression-direction="rtl"（日漫常见）时，把左右滑动
+;     翻页对调——从左往右滑 = 下一页；单击翻页的左右边缘也跟着对调。判定由 book-serve
+;     GET /reading-direction/<uuid> 读 xochitl 书库里那本 EPUB 的 OPF 给出。
+;   开关写在 ~/.local/share/cangjie-ime/reading-qol.json（网关 enhance/qol.rs 全量写回）。
+;   **每次打开书时读一次**，切换开关后下次打开书生效——不像 08 月旧版每 1.5 秒轮询一次配置（费电）。
+;
+; 【来历】08-14 的 tap-page-turn.qmd（真机验证过，09-11 随 xovi-extensions/reading-qol/ 移出仓库）按 .172
+;   重新核对锚点后重写；配置注入改到 DocumentView 打开书时做。
+;
+; 【.172 锚点核对（从设备 xochitl 二进制 zstd 块解出的真实 QML）】
+;   - DeviceSceneView.qml:18-19 根 FocusScope{id:root}，有 zoomedIn/zoomedOut(:64-65)、notePage(:67)、
+;     textMode(:79)、clickGestureEnabled(:167)、signal moveForward(:190)；:1012-1016 以 view: root 实例化
+;     SceneViewGestures ⇒ 手势文件里的 view 就是这个 root，下面加的 cj* 属性在两边都能读到。
+;   - DocumentView.qml:831-832 DeviceSceneView{id:sceneView}；root.document（:58）。
+;   - SceneViewGestures.qml:208-259 TouchAreaClickFilter{id:touchClick} 的 onClick: (pos) => {；
+;     :439 nextPageGesture / :457 prevPageGesture 的 onActiveChanged 调 view.moveForward()/moveBackward()。
+;
+; 【qmldiff 纪律】INSERT{} 块内是 QML，注释只能用 //（用 ; 会被当成 QML 输出）。
+; 【日志】journalctl -u xochitl | grep CJ-PAGE-TURN：loaded（加载）/ cfg（打开书读到的开关）/ rtl book（这本书按从右往左）。
+;   单击/滑动命中不写日志（09-24 真机验证后去掉）：每行 journal 都会唤醒 wallpaper-serve 的 journalctl -f 和飞行记录仪。
+; ─────────────────────────────────────────────────────────────────────────
+
+AFFECT /qml/device/view/documentview/DeviceSceneView.qml
+
+    TRAVERSE FocusScope[#root]
+        LOCATE AFTER ALL
+        INSERT {
+            // ── reader-page-turn：状态（由 DocumentView 打开书时写入；默认全关 = 原生行为）──
+            property bool cjTapPageTurn: false
+            property bool cjRtl: false
+        }
+    END TRAVERSE
+
+END AFFECT
+
+AFFECT /qml/device/view/documentview/DocumentView.qml
+
+    TRAVERSE ?#root
+        LOCATE AFTER ChapterPositionTracker#chapterPositionTracker
+        INSERT {
+            Connections {
+                target: root
+                function onDocumentChanged() {
+                    // 先回到原生方向，等查询结果回来再决定要不要对调，避免沿用上一本书的方向。
+                    sceneView.cjRtl = false;
+                    cjPageTurnOpenTimer.restart();
+                }
+            }
+            Timer {
+                id: cjPageTurnOpenTimer
+                interval: 300
+                repeat: false
+                onTriggered: {
+                    // 关书时 document 变成空，也会触发 onDocumentChanged：不读配置，直接收工。
+                    if (!root.document) { return; }
+                    var tap = false;
+                    var rtlWanted = false;
+                    try {
+                        var f = new XMLHttpRequest();
+                        f.open("GET", "file:///home/root/.local/share/cangjie-ime/reading-qol.json", false);
+                        f.send();
+                        if (f.responseText && f.responseText.length > 0) {
+                            var c = JSON.parse(f.responseText);
+                            tap = !!c.tapPageTurn;
+                            rtlWanted = !!c.rtlPageTurn;
+                        }
+                    } catch (e) {
+                        console.warn("CJ-PAGE-TURN: config read failed " + e);
+                    }
+                    sceneView.cjTapPageTurn = tap;
+                    console.warn("CJ-PAGE-TURN: cfg tap=" + tap + " rtl=" + rtlWanted);
+                    if (!rtlWanted) { return; }
+                    var did = String(root.document.id).replace(/[{}]/g, "");
+                    var x = new XMLHttpRequest();
+                    x.onreadystatechange = function() {
+                        if (x.readyState !== XMLHttpRequest.DONE || x.status !== 200) { return; }
+                        try {
+                            // 结果回来时书可能已经换了：只对仍是同一本书的情况生效。
+                            if (!root.document || String(root.document.id).replace(/[{}]/g, "") !== did) { return; }
+                            sceneView.cjRtl = !!JSON.parse(x.responseText).rtl;
+                            if (sceneView.cjRtl) { console.warn("CJ-PAGE-TURN: rtl book " + did); }
+                        } catch (e2) {
+                        }
+                    };
+                    x.open("GET", "http://127.0.0.1:8790/reading-direction/" + did);
+                    x.send();
+                }
+            }
+        }
+    END TRAVERSE
+
+END AFFECT
+
+AFFECT /qml/device/view/documentview/SceneViewGestures.qml
+
+    ; 1) 加载标记
+    TRAVERSE TouchArea[#touchArea]
+        LOCATE AFTER ALL
+        INSERT {
+            Item {
+                objectName: "cjPageTurnMarker"
+                Component.onCompleted: console.warn("CJ-PAGE-TURN: loaded")
+            }
+        }
+    END TRAVERSE
+
+    ; 2) 单击翻页：插在单指点击 handler 函数体最前面
+    TRAVERSE TouchArea[#touchArea] > TouchAreaClickFilter[#touchClick]
+        REBUILD onClick
+            LOCATE AFTER STREAM / { /
+            INSERT {
+                // ── reader-page-turn 单击翻页 ──
+                // 开关关 / 链接按下 / 文本编辑态 / 缩放态 / 笔记页 → 不接管，交回原生逻辑。
+                if (view.cjTapPageTurn
+                    && !linkPressed
+                    && !view.textMode
+                    && !view.zoomedIn
+                    && !view.zoomedOut
+                    && !view.notePage) {
+                    var _cjx = pos.x / touchArea.width;
+                    var _cjy = pos.y / touchArea.height;
+                    var _cjdir = 0;
+                    // 纵向只在 45%–80% 生效；横向左右各 7% 边缘。
+                    if (_cjy > 0.45 && _cjy < 0.80) {
+                        if (_cjx < 0.07) {
+                            _cjdir = -1;
+                        } else if (_cjx > 0.93) {
+                            _cjdir = 1;
+                        }
+                    }
+                    // 从右往左的书：左边缘 = 下一页。
+                    if (view.cjRtl) {
+                        _cjdir = -_cjdir;
+                    }
+                    if (_cjdir !== 0) {
+                        toolbar.closeFoldout();
+                        reset();
+                        if (_cjdir > 0) {
+                            view.moveForward();
+                        } else {
+                            view.moveBackward();
+                        }
+                        return;
+                    }
+                }
+                // ── 注入结束，以下为原生 onClick 逻辑 ──
+            }
+        END REBUILD
+    END TRAVERSE
+
+    ; 3) 从右往左的书：往左滑（原生=下一页）改成上一页
+    TRAVERSE TouchArea[#touchArea] > TouchAreaSwipeFilter[#nextPageGesture]
+        REBUILD onActiveChanged
+            LOCATE AFTER STREAM / { /
+            INSERT {
+                if (active && view.cjRtl) {
+                    view.moveBackward();
+                    return;
+                }
+            }
+        END REBUILD
+    END TRAVERSE
+
+    ; 4) 从右往左的书：往右滑（原生=上一页）改成下一页
+    TRAVERSE TouchArea[#touchArea] > TouchAreaSwipeFilter[#prevPageGesture]
+        REBUILD onActiveChanged
+            LOCATE AFTER STREAM / { /
+            INSERT {
+                if (active && view.cjRtl) {
+                    view.moveForward();
+                    return;
+                }
+            }
+        END REBUILD
+    END TRAVERSE
+
+END AFFECT

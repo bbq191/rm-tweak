@@ -1,0 +1,56 @@
+; ─────────────────────────────────────────────────────────────────────────
+; font-menu-dynamic-3.27.qmd —— 同 font-menu-dynamic.qmd，固件 3.27 线锚点（设备当前 3.27.3.0）。
+; 3.27 的 FormatFont.qml：Item#fontContainer > Grid#fontGrid > Repeater（无 id、内联数组 model、rows:2/columns:2）。
+; 做法沿用 add-reading-fonts-3.27.qmd：整体重赋 model（原 4 项 + fonts.json 各项 key），rows 按项数算；
+; delegate 直接用 modelData 作显示名与 family（无本地化显示名——3.27 结构限制）。
+; 另给 delegate 的 Text#fontSample 加右锚+elide：长家族名截断成"…"不溢出格子（2026-09-04）。
+; ─────────────────────────────────────────────────────────────────────────
+
+AFFECT /qml/device/view/documentview/FormatFont.qml
+    TRAVERSE Item[#fontContainer] > Grid[#fontGrid] > Repeater
+        LOCATE AFTER ALL
+        INSERT {
+            property string cjLastSig: ""
+            property var cjBase: ["EB Garamond", "Noto Sans", "Noto Mono", "Noto Serif"]
+            function cjRead(path) {
+                try { var xhr = new XMLHttpRequest(); xhr.open("GET", path, false); xhr.send(); return xhr.responseText; } catch (e) { return ""; }
+            }
+            function cjKeys() {
+                var t = cjRead("file:///home/root/.local/share/shelf/fonts.json");
+                var keys = [];
+                if (t && t.length > 0) {
+                    try { var j = JSON.parse(t); if (j && j.fonts) for (var i = 0; i < j.fonts.length; i++) if (j.fonts[i].key) keys.push(j.fonts[i].key); } catch (e) {}
+                }
+                return keys;
+            }
+            function cjSync(reason) {
+                var t = cjRead("file:///home/root/.local/share/cangjie-ime/reading-qol.json");
+                var fe = false;
+                try { if (t && t.length > 0) fe = !!JSON.parse(t).fontEnhance; } catch (e) {}
+                if (!fe) { console.warn("SHELF-FONT327: " + reason + " fontEnhance=false, skip"); return; }
+                var all = cjBase.concat(cjKeys());
+                var sig = all.join("\u0001"); if (cjLastSig === sig) return; cjLastSig = sig;
+                fontGrid.rows = Math.ceil(all.length / 2);
+                model = all;
+                console.warn("SHELF-FONT327: " + reason + " model=" + all.length + " rows=" + fontGrid.rows);
+            }
+            Component.onCompleted: cjSync("onCompleted")
+        }
+    END TRAVERSE
+    TRAVERSE Item[#fontContainer]
+        LOCATE AFTER ALL
+        INSERT {
+            onVisibleChanged: if (visible) { for (var i = 0; i < fontGrid.children.length; i++) { var c = fontGrid.children[i]; if (c && c.cjSync) { c.cjSync("visible"); break; } } }
+        }
+    END TRAVERSE
+    TRAVERSE Item[#fontContainer] > Grid[#fontGrid] > Repeater > Item > Text[#fontSample]
+        LOCATE AFTER ALL
+        INSERT {
+            // 长家族名(如 "LXGW Neo ZhiSong Screen Full")原本只锚左边、无右界→画出格子。
+            // 加右锚+elide：超出格子截断成"…"，text/font.family 仍是完整 modelData，setFontName 不受影响。
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            elide: Text.ElideRight
+        }
+    END TRAVERSE
+END AFFECT

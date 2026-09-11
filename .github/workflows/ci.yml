@@ -1,0 +1,87 @@
+name: CI
+
+# cang-jie 最小回归网：离线可跑的四类检查（不含真机——设备行为靠工程纪律人工真机验证）。
+# 四类检查：shell 静态检查 / host 侧 pytest + 前端 JS + enhance/shared C 单测 / 各 Rust crate cargo test / aarch64 交叉编译冒烟。
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 安全关键 shell 静态检查（install/deploy/fail-safe/packaging 能把设备搞崩，必须零告警）──
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 装 shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: 全量 .sh 检查（POSIX，揪 busybox 上会炸的 bashism）
+        # --severity=warning：只在 warning/error 上门控，容忍 runner apt shellcheck(0.9.x)
+        # 与本地(0.11)对 info/style(SC2015/SC2002…)判定的版本漂移。真问题都是 warning+。
+        run: git ls-files '*.sh' | xargs -r shellcheck --severity=warning
+
+  # ── host 侧测试：安装脚本沙箱模拟（pytest）+ 网关前端 JS + enhance/shared C 单测 ──
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 装 uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: uv sync（统一 .venv，各线依赖）
+        run: uv sync
+      # 只跑「自足」测试（fixtures 都进 git）。拼音引擎等早期代码已于 2026-09-11 移出本仓库，不再有对应步骤。
+      # 2026-09-18：`shelf/host/`（Python CLI + Calibre 转换管线）整个已砍——用户明确表态以后
+      # 不再使用 PC 端，只留网页/设备端交互；源码留档在本机 oldbak/（不随仓库走），CI 这步跟着删。
+      - name: pytest（packaging/tests：安装/卸载脚本的沙箱模拟，不需要真机）
+        run: uv run pytest packaging/tests -q
+      - name: 网关内嵌 JS 语法检查（ui/app.js 是真文件，编译期 include_str! 进二进制）
+        run: node --check gateway/ui/app.js
+      - name: 网关前端转义回归（esc() 行为 + app.js 插值静态检查，node 内置测试、零 npm 依赖）
+        run: node --test gateway/ui/test/*.test.mjs
+      # enhance/shared 四个纯 C 工具文件（hl-snap/handwriting-stroke 两个"涉及 xovi/mprotect
+      # 高危代码路径"共用的特征码扫描 + trampoline patch）：host gcc 编译+跑，不需要 aarch64
+      # 交叉工具链，不需要真机——2026-09-16 补，此前这块完全零自动化覆盖，见 enhance/shared/
+      # tests/test_shared.c 头注。
+      - name: enhance/shared host 单测（特征码扫描 + trampoline patch，纯字节级验证不涉真机）
+        run: make -C enhance/shared test
+
+  # ── 设备端 Rust crate 的 host 测试（rmsvc-core / gateway / shelf / notes，各自独立无根 workspace）──
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test（共享基座 + 网关 + enhance 的三个独立服务，各自独立 crate）
+        run: |
+          cargo test --manifest-path rmsvc-core/Cargo.toml
+          cargo test --manifest-path gateway/Cargo.toml
+          cargo test --manifest-path enhance/wallpaper-serve/Cargo.toml
+          cargo test --manifest-path enhance/font-serve/Cargo.toml
+          cargo test --manifest-path enhance/battop/Cargo.toml
+      - name: cargo test（shelf 内部 workspace：bookconv/book-serve/koreader-serve）
+        run: cargo test --manifest-path shelf/Cargo.toml --workspace
+      - name: cargo test（notes 内部 workspace：rmv6/notecore/vendorcfg/四服务）
+        run: cargo test --manifest-path notes/Cargo.toml --workspace
+
+  # ── aarch64 全静态交叉编译冒烟（打包器分发的设备二进制，别让 musl/链接悄悄坏掉）──
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: cross
+      - name: 装 aarch64 交叉 gcc（编 ring 的 C；musl 链接由 rust-lld 完成）
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+      - name: shelf + gateway + notes 交叉编译（shelf/build.sh 顺手编译 ../gateway、../notes，复用仓库 build.sh，与打包器同路径）
+        run: sh shelf/build.sh

@@ -1,0 +1,25 @@
+# pdf-extract 0.12.1 (MIT, Jeff Muizelaar <jmuizelaar@mozilla.com>) 的本地 fork——见 src/lib.rs 头注释
+# 为什么 fork：上游 OutputDev::output_character 不传颜色、Do 算子对图片 XObject 错误地当 Form 递归、
+# 颜色算子 g/G/rg/RG/k/K 六个完全不处理（只 dlog）——字体/glyph 解码（真正难、易错的部分）原样保留，
+# 只在 Processor::process_stream 里扩展这几处。详见 shelf/docs/EPUB优化规范白皮书.md §05。
+[package]
+name = "pdf-extract-cj"
+version = "0.12.1"
+edition = "2018"
+license = "MIT"
+description = "pdf-extract 0.12.1 本地 fork：补全颜色算子 + 暴露文字颜色/图片位置给调用方"
+
+[lib]
+name = "pdf_extract_cj"
+path = "src/lib.rs"
+
+[dependencies]
+adobe-cmap-parser = "0.4.1"
+encoding_rs = "0.8.34"
+euclid = "0.20.5"
+lopdf = { version = "0.45", default-features = false, features = ["wasm_js"] }
+postscript = "0.14"
+type1-encoding-parser = "0.1.1"
+unicode-normalization = "0.1.19"
+cff-parser = "0.2.0"
+log = "0.4.22"

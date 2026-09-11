@@ -1,0 +1,23 @@
+[package]
+name = "book-serve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "书架·母版库（入库/优化/落库正交）+ 原生 xochitl 投递"
+
+[[bin]]
+name = "book-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../../rmsvc-core" }
+bookconv = { path = "../../crates/bookconv" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# statvfs 查母版库所在分区剩余空间（此前每次 GET /staging 都 fork 一个 `df`）；libc 本来就在依赖树里（inotify 拉进来的）
+libc = "0.2"
+
+[dev-dependencies]
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tempfile = "3"
+tiny_http = "0.12"

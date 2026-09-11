@@ -1,0 +1,31 @@
+# notes 笔记线：矿(ink) / 转写(transcribe) / 脑(mind) / 本(note) 四服务 + 共享 crate 的内部 workspace。
+# 依赖方向单向无环：services/* → rmsvc-core（三线共享底座：paths/registry/http/events/fswatch/xochitl/clock）+ crates/*；
+# **不依赖** bookconv / device-core / knowledge/pkm / reading（旧线只借鉴功能与踩坑，.rm 解析与页→章映射剥离移植成新 crate）。
+[workspace]
+resolver = "2"
+members = [
+    "crates/rmv6",
+    "crates/epubmap",
+    "crates/notecore",
+    "crates/vendorcfg",
+    "services/ink-serve",
+    "services/transcribe-serve",
+    "services/mind-serve",
+    "services/note-serve",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# 与 shelf 同款：设备端体积优先、全静态 musl。
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+# unwind（不是 abort）：abort 下 catch_unwind 完全无效，一次 panic 会摔掉整个进程（与 shelf 同理，
+# 见 shelf/Cargo.toml；2026-09-19《镖人》真机踩过）。服务的请求线程里有 `catch_unwind` 兜底的后台线程/批量 worker，
+# 失败应该只影响那一项，不该让所有在途操作一起陪葬；代价是二进制体积略增（见提交说明）。
+panic = "unwind"
+codegen-units = 1

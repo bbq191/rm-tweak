@@ -1,0 +1,2 @@
+#!/bin/sh
+if [ "$1" = "-u" ]; then echo 0; else exec /usr/bin/id "$@"; fi

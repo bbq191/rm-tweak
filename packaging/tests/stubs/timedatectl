@@ -1,0 +1,8 @@
+#!/bin/sh
+# 假 timedatectl（packaging/tests 用）：默认已同步；CJ_SIM_UNSYNCED=1 → 未同步
+echo "timedatectl $*" >> "${CJ_SIM_LOG:-/dev/null}"
+case "$*" in
+    *NTPSynchronized*) if [ -n "${CJ_SIM_UNSYNCED:-}" ]; then echo no; else echo yes; fi ;;
+    *) if [ -n "${CJ_SIM_UNSYNCED:-}" ]; then echo "System clock synchronized: no"; else echo "System clock synchronized: yes"; fi ;;
+esac
+exit 0

@@ -1,0 +1,4 @@
+#!/bin/sh
+# 假 dmesg（packaging/tests 用）：不读宿主机内核日志。CJ_SIM_DMESG=文件 时输出该文件，否则空
+[ -n "${CJ_SIM_DMESG:-}" ] && cat "$CJ_SIM_DMESG"
+exit 0

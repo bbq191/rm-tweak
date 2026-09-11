@@ -1,0 +1,25 @@
+[Unit]
+Description=书架·字体（loopback 8792）
+# 二进制/数据在 /home，故依赖 home.mount；这是本服务自己的依赖，**不牵连 xochitl 本体**（红线）。
+# 启动顺序（2026-09-24）：排在 xovi-reenable 之后——开机时 xochitl 要带 xovi 再重启一次，先让它把界面拉起来、
+# 本服务再起，免得抢 CPU。只是本单元单方面的顺序约束（After= 不是 Requires=），xochitl 不会等本服务（红线）；
+# xovi-reenable 没装时这条自动失效。不依赖 network-online.target：只监听回环/0.0.0.0，调云端按需发、失败重试，
+# 此前拉上它会让开机为本组服务专门跑 NetworkManager-wait-online（没 WiFi 时等到超时）。
+After=home.mount xovi-reenable.service
+PartOf=shelf.target
+
+[Service]
+Type=simple
+# fontconfig 索引在 tmpfs、真重启后丢，开机补跑一次（失败不阻断）。09-24 前放在网关单元里，
+# 字体归本服务管，而且网关每次启动都要先同步等它跑完，拖慢网页入口。
+ExecStartPre=-/usr/bin/fc-cache
+ExecStart=/home/root/.local/bin/font-serve serve --bind 127.0.0.1:8792
+Restart=on-failure
+RestartSec=5
+# 与 wr-serve 同款软限：只降权不硬顶（交互式重活需要突发），MemoryMax 兜内存（上传走流式落盘）。
+CPUWeight=20
+MemoryMax=192M
+Nice=5
+
+[Install]
+WantedBy=shelf.target

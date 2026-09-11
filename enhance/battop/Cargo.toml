@@ -1,0 +1,16 @@
+[package]
+name = "battop"
+version = "0.1.0"
+edition = "2021"
+description = "非实时电池/后台占用采集器(常驻服务,进程内每 ~10 分钟采一次)——enhance 系统增强线"
+
+[[bin]]
+name = "battop"
+path = "src/main.rs"
+
+# 纯 std 零依赖:musl 全静态免外部工具链,产物免疫设备 libc。
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"

@@ -1,0 +1,4 @@
+#!/bin/sh
+# CJ_SIM_JOURNAL=文件：输出该文件（模拟设备日志）；否则只输出 appload 的健康信号（sidebar-entry 探测用）
+if [ -n "${CJ_SIM_JOURNAL:-}" ]; then cat "$CJ_SIM_JOURNAL"; exit 0; fi
+echo "Loaded external AppLoad hooks in main UI"

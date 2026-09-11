@@ -1,0 +1,20 @@
+#!/bin/sh
+echo "systemctl $*" >> "${CJ_SIM_LOG:-/dev/null}"
+# CJ_SIM_PIPE_ON_REBOOT=1：模拟排重启时 ssh 连接断了——调用方 shell 收到 SIGPIPE（它应在关键区里忽略）
+if [ -n "${CJ_SIM_PIPE_ON_REBOOT:-}" ] && [ "$*" = "reboot --no-block" ]; then kill -PIPE "$PPID"; fi
+# CJ_SIM_REBOOT_FAIL=1：systemctl reboot 本身失败
+if [ -n "${CJ_SIM_REBOOT_FAIL:-}" ] && [ "$1" = "reboot" ]; then echo "Failed to reboot system" >&2; exit 1; fi
+case "$1" in
+    show)
+        case "$*" in
+            *MainPID*) echo 4242 ;;
+            *NRestarts*) echo "${CJ_SIM_NRESTARTS:-0}" ;;
+            *ExecMainStartTimestampMonotonic*) echo "${CJ_SIM_START_MONO:-7530000}" ;;
+        esac ;;
+    is-active)
+        if [ -n "${CJ_SIM_INACTIVE:-}" ]; then echo inactive; exit 3; fi
+        # CJ_SIM_INACTIVE_UNITS="a.service b.service"：只让点名的单元 inactive
+        case " ${CJ_SIM_INACTIVE_UNITS:-} " in *" $2 "*) echo inactive; exit 3 ;; esac
+        echo active ;;
+esac
+exit 0

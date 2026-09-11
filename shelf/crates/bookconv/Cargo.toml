@@ -1,0 +1,62 @@
+[package]
+name = "bookconv"
+version = "0.1.0"
+edition = "2021"
+description = "通用电子书内容层：多格式→EPUB/PDF 转换、EPUB 优化器、e-ink 图片处理、EPUB 组装（从 weread-device 抽出，weread 线与书架共用）"
+license = "MIT"
+
+[dependencies]
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+ureq = "2"
+png = "0.17"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# PNG 像素 /FlateDecode 压缩（pdfwrite），纯 Rust、musl 友好
+miniz_oxide = "0.8"
+# 图片降采样/抖动：只启 jpeg+png 控体积
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+fast_image_resize = "6.1.0"
+# FB2→EPUB；quick-xml 版本须与 fb2 一致(0.30)
+fb2 = "0.4"
+quick-xml = { version = "0.30", features = ["serialize", "encoding"] }
+# 网文获取（readlater 下沉，2026-09-05）：Readability 可读性抽取 + scraper 白名单重序列化成合法 XHTML
+readability-rust = "0.1.0"
+scraper = "0.18"
+ego-tree = "0.6"
+# 入库 PDF「优化」（有文字层→转 EPUB，无文字层/漫画→仅裁边，2026-09-19）：三者均纯 Rust、
+# 无 C 依赖，aarch64-unknown-linux-musl 全静态交叉编译已验证过（含传递依赖 hayro-*/vello_cpu/
+# skrifa/rayon 等，`file` 核对 book-serve 产物仍是 statically linked）。
+# lopdf：通用 PDF 对象/xref/content stream 解析+构造，读第三方 PDF 结构（页树/字体资源/
+# 图片 XObject/书签目录），现有 `convert/pdfwrite.rs` 的手搓读写器只认自己产出的简单结构，
+# 读不了第三方复杂 PDF。
+lopdf = "0.45.0"
+# pdf-extract：基于 lopdf，暴露 OutputDev::output_character(变换矩阵+字体名+字号) 钩子，
+# 给文字层探测/字号识别标题/公式区域探测三处用，不用自己写 content stream 算子解释器（字体/glyph
+# 解码本身不重写——那是真正难、易错的部分）。2026-09-23 起改用本地 fork `pdf-extract-cj`（补全颜色
+# 算子+暴露颜色/图片位置，见该 crate `src/lib.rs` 头注释），`package =` 让代码里仍用 `pdf_extract::`
+# 引用，text.rs 等调用点不用改名。
+pdf-extract = { path = "../pdf-extract-cj", package = "pdf-extract-cj" }
+# hayro：纯 Rust PDF 光栅化引擎（Apache-2.0/MIT，1000+ PDF 回归测试套件），把整页渲染成
+# 位图供公式区域裁剪用（没有按区域渲染的精确 API，渲染整页后用
+# `image::imageops::crop_imm` 裁出公式小块，见 `pdf_ingest::to_epub::crop_pixmap_to_png`）。
+hayro = "0.7.1"
+
+[dev-dependencies]
+tempfile = "3"
+
+# host/设备通用 CLI：对一本 EPUB 跑同一 optimize_epub（wash_epub.sh 末步用）。随内容层从 weread-device 迁入。
+[[bin]]
+name = "epub-optimize"
+path = "src/bin/epub_optimize.rs"
+
+# host CLI：漫画 CBZ→PDF（`shelf push` 判断体积够小时顺带出一份投原生用的 PDF；2026-09-08 复活，
+# `convert::cbz::cbz_to_pdf` 本体 2026-09-05 §03t 就没删过，只是删了 shelf 侧的调用方，见白皮书）。
+[[bin]]
+name = "cover-fix"
+path = "src/bin/cover_fix.rs"
+
+[[bin]]
+name = "cbz2pdf"
+path = "src/bin/cbz2pdf.rs"

@@ -1,0 +1,20 @@
+#!/bin/sh
+# 假 scp：root@host:/abs 映射到 $CJ_SIM_ROOT/abs
+R="${CJ_SIM_ROOT:?}"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -o) shift 2 ;;
+        -*) shift ;;
+        *) break ;;
+    esac
+done
+mapp() {
+    case "$1" in
+        root@*:*) p="${1#root@*:}"; printf '%s' "$R$p" | sed -e "s#$R/home/root#$R/home/root#" ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+src="$(mapp "$1")"; dst="$(mapp "$2")"
+echo "scp $1 -> $2" >> "$CJ_SIM_LOG"
+[ -n "${CJ_SIM_SCP_CORRUPT:-}" ] && case "$2" in *"$CJ_SIM_SCP_CORRUPT"*) cp "$src" "$dst" && echo corrupt >> "$dst"; exit 0 ;; esac
+cp "$src" "$dst"

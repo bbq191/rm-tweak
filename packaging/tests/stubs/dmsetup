@@ -1,0 +1,3 @@
+#!/bin/sh
+[ -n "${CJ_SIM_VERITY:-}" ] && echo "root (254:0)"
+exit 0

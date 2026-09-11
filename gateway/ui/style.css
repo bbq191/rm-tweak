@@ -1,0 +1,248 @@
+:root{color-scheme:light dark;
+ --bg:#f6f7f9;--surface:#fff;--surface2:#f0f2f5;--fg:#1a1c1e;--mute:#5b6169;--line:#dfe3e8;--line2:#eceef1;
+ --accent:#3257d0;--accent-fg:#fff;--ok:#1a7f37;--bad:#c0362c;--warn:#9a6700;--shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05)}
+@media (prefers-color-scheme:dark){:root{
+ --bg:#16181c;--surface:#1e2126;--surface2:#262a30;--fg:#e6e8eb;--mute:#9aa2ad;--line:#333941;--line2:#2a2f36;
+ --accent:#7d9bff;--accent-fg:#10131a;--ok:#5fce7f;--bad:#ff8c80;--warn:#e3b341;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif;margin:0;color:var(--fg);background:var(--bg);line-height:1.5;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+a{color:var(--accent)}
+/* 头部：纯色兜底（老 Safari 不认 color-mix 时头部仍不透明、正文滚过不透字）+ -webkit- 前缀让 iOS Safari 也模糊 */
+header{position:sticky;top:0;z-index:5;background:var(--surface);background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.7em 1.1em;display:flex;align-items:center;gap:.8em}
+header .logo{font-size:1.15em;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;gap:.4em}
+header .logo::before{content:"🌿";font-size:1.1em}
+header small{color:var(--mute)}
+header .links{margin-left:auto;display:flex;gap:.6em;font-size:.85em}
+/* 纯文字链接原来零 padding，触控热区约等于文字包围盒——补一点垂直/水平留白扩大热区，
+   不明显改变视觉间距（2026-09-09 审计发现，退出跟改密码/CA证书视觉权重一样但后果完全不同，
+   这里只解决"点不准"，误触仍靠各自的确认/无副作用兜底，不在这里额外加区分）。 */
+header .links a{color:var(--mute);text-decoration:none;padding:.3em .25em;display:inline-block}header .links a:hover{color:var(--accent)}
+/* top 跟着页头实际高度走（app.js 用 ResizeObserver 写 --hdr-h）：英文界面在手机上页头会折成两行，写死的
+   3.1em/2.9em 会让标签栏滚动时钻到页头底下被盖住（2026-09-24 截图走查发现）。 */
+nav{display:flex;gap:.4em;padding:.7em 1.1em;overflow-x:auto;background:var(--bg);position:sticky;top:var(--hdr-h,3.1em);z-index:4;-webkit-overflow-scrolling:touch}
+nav button{border:1px solid transparent;background:var(--surface2);color:var(--mute);padding:.45em 1.05em;border-radius:2em;cursor:pointer;font-size:.95em;white-space:nowrap;transition:.15s}
+nav button:hover{color:var(--fg)}
+nav button.on{background:var(--accent);color:var(--accent-fg);font-weight:600;box-shadow:var(--shadow)}
+main{padding:1.1em;max-width:48em;margin:0 auto}
+section{display:none;animation:fade .2s ease}section.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:.9em;padding:1em 1.1em;box-shadow:var(--shadow);margin:.9em 0}
+h2{font-size:1.05em;margin:0 0 .1em}h3{font-size:.98em;margin:1.2em 0 .3em}
+.lead{color:var(--mute);font-size:.9em;margin:.1em 0 0}
+label.field{display:block;margin:.9em 0 .2em;font-size:.85em;color:var(--mute);font-weight:500}
+/* 所有文本类输入框同一套外观：search/number/password 原来没覆盖到，笔记搜索框、模型单价、API key 输入框
+   显示成浏览器默认的小框（暗色模式下尤其扎眼，2026-09-24 截图走查发现）。 */
+select,input[type=text],input[type=search],input[type=number],input[type=password],input[type=url]{font-size:1em;padding:.55em .6em;border:1px solid var(--line);border-radius:.5em;background:var(--surface);color:var(--fg);width:100%;max-width:100%}
+.row{display:flex;gap:.7em;align-items:center;flex-wrap:wrap;margin:.6em 0}
+/* 目标选择卡 */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:.6em;margin:.4em 0 .2em}
+@media(max-width:34em){.seg{grid-template-columns:1fr}}
+.seg label{position:relative;display:block;border:1.5px solid var(--line);border-radius:.7em;padding:.7em .8em;cursor:pointer;background:var(--surface);transition:.15s}
+.seg label:hover{border-color:var(--accent)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));box-shadow:var(--shadow)}
+.seg .t{font-weight:700;font-size:.98em}.seg .d{font-size:.82em;color:var(--mute);margin-top:.15em}
+.seg .fmt{font-size:.72em;color:var(--accent);margin-top:.35em;font-variant:tabular-nums}
+.opt-note{font-size:.82em;color:var(--mute);margin:.4em 0 0;padding:.5em .7em;background:var(--surface2);border-radius:.5em;border-left:3px solid var(--accent)}
+.toggle{display:inline-flex;align-items:center;gap:.45em;font-size:.92em;cursor:pointer}
+.drop{border:2px dashed var(--line);border-radius:.8em;padding:1.6em 1em;text-align:center;color:var(--mute);margin:.9em 0;transition:.15s;cursor:pointer}
+.drop:hover,.drop.hi{border-color:var(--accent);color:var(--fg);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.drop .big{font-size:1.6em;display:block;margin-bottom:.2em;opacity:.7}
+ul.q{list-style:none;padding:0;margin:.6em 0}
+ul.q li{border:1px solid var(--line);border-radius:.6em;padding:.55em .8em;margin:.45em 0;background:var(--surface)}
+ul.q li.ok{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}ul.q li.bad{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.name{font-weight:600;word-break:break-all}.msg{color:var(--mute);font-size:.88em;margin-top:.2em}.ok .msg{color:var(--ok)}.bad .msg{color:var(--bad)}
+progress{width:100%;height:.4em;margin:.35em 0;border:none;border-radius:1em;overflow:hidden}
+progress::-webkit-progress-bar{background:var(--surface2)}progress::-webkit-progress-value{background:var(--accent)}
+.btn{font-size:.95em;padding:.5em 1em;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:.5em;cursor:pointer;transition:.15s}
+/* 上传队列的"×"移除按钮：视觉上小、但触控热区不能跟着一起小（原来 padding 挤到约 17px 高，是全站
+   最小的可点元素，2026-09-09 审计发现）；用 min-width/height 撑热区，图形本身不放大。 */
+.btn.x{padding:.05em .45em;line-height:1;min-width:2.2em;min-height:2.2em}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn.pri:hover{filter:brightness(1.06)}.btn:disabled{opacity:.5;cursor:default}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.35em .9em;font-size:.92em;align-items:baseline}.kv b{color:var(--mute);font-weight:500}
+.list{list-style:none;padding:0;margin:.3em 0}
+.list li{display:flex;justify-content:space-between;gap:1em;align-items:center;padding:.5em .1em;border-bottom:1px solid var(--line2)}
+/* 名字太长放不下时，右侧的大小/徽章/按钮整组换到下一行靠右，不再被挤成一条竖排；超长不断词的文件名就地折行 */
+.list li{flex-wrap:wrap}.list li>span:first-child{min-width:0;overflow-wrap:anywhere}.list li>span:last-child{margin-left:auto}
+/* 上下排列的列表行（设备健康·服务）：说明另起一行左对齐；.nw 让"7.60 s"这类数字和单位不被拆开 */
+.list li.stack{display:block}.list li.stack>span{display:block;margin-left:0}.list li.stack>span+span{margin-top:.2em}.nw{white-space:nowrap}
+/* 母版库列表书多时很长（2026-09-19 用户反馈）——单独收紧行内边距，不动全站共用的 .list（笔记/
+   其它列表沿用原样，只有这里书多到需要专门收紧）。 */
+.small{font-size:.83em;color:var(--mute)}
+code{background:var(--surface2);padding:.1em .35em;border-radius:.3em;font-size:.88em}
+/* 对比表 */
+details.cmp{margin:.6em 0}
+details.cmp>summary{cursor:pointer;font-size:.9em;color:var(--accent);padding:.4em 0;user-select:none;list-style:none}
+details.cmp>summary::-webkit-details-marker{display:none}
+details.cmp>summary::before{content:"▸ ";transition:.15s;display:inline-block}
+details.cmp[open]>summary::before{transform:rotate(90deg)}
+.tblwrap{overflow-x:auto;margin:.4em 0;border:1px solid var(--line);border-radius:.6em}
+table.cmp{border-collapse:collapse;width:100%;font-size:.85em;min-width:34em}
+/* 34em 的下限在手机竖屏（约 360-430px）会强制横向滚动——用量表之前单独修过（见 [data-usagewrap]），
+   这里改成窄屏媒体查询统一处理所有 table.cmp（如模型用量表），宽屏不受影响（2026-09-09 审计发现）。 */
+@media (max-width:36em){table.cmp{min-width:0}}
+table.cmp th,table.cmp td{text-align:left;padding:.55em .7em;border-bottom:1px solid var(--line2);vertical-align:top}
+table.cmp thead th{background:var(--surface2);font-weight:600;position:sticky;top:0}
+table.cmp tbody th{font-weight:600;color:var(--fg);white-space:nowrap;background:var(--surface)}
+table.cmp tbody tr:last-child td{border-bottom:none}
+table.cmp .pick{color:var(--accent);font-weight:600}
+.badge{display:inline-block;font-size:.72em;padding:.05em .5em;border-radius:1em;background:var(--surface2);color:var(--mute);border:1px solid var(--line)}
+.badge[title]{cursor:help} /* 点了会弹出一条 toast 展示完整说明（app.js 全局委托），触屏摸不到 hover 时的替代入口 */
+.badge.on{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok);border-color:transparent}
+.badge.off{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad);border-color:transparent}
+.crumb a{color:var(--accent);text-decoration:none}.crumb a:hover{text-decoration:underline}
+/* 二级标签（把一个大页面拆成几屏，手机不长拉） */
+.subnav{display:flex;gap:.4em;overflow-x:auto;margin:.2em 0 1em;padding-bottom:.15em;-webkit-overflow-scrolling:touch}
+/* 垂直 padding 从 .32em 提到 .5em（2026-09-09 审计发现触控热区偏小）——笔记页常见两层 .subnav
+   叠着用，没有直接顶到 44px 建议值（那样两层叠加占屏太多，跟"整理"页几轮反馈压密度的方向冲突），
+   是密度和热区之间的折中，比原来小一大截已经好点。 */
+.subnav button{border:1px solid var(--line);background:var(--surface);color:var(--mute);padding:.5em .95em;border-radius:2em;cursor:pointer;font-size:.9em;white-space:nowrap;transition:.15s}
+.subnav button:hover{color:var(--fg)}
+.subnav button.on{background:var(--surface2);color:var(--fg);border-color:var(--accent);font-weight:600}
+.subpanel{display:none}.subpanel.on{display:block}
+/* 说明列表 */
+dl.help{margin:.3em 0 .2em}dl.help dt{font-weight:600;margin-top:.7em;color:var(--fg)}
+dl.help dd{margin:.2em 0 .2em;color:var(--mute);font-size:.9em;line-height:1.65}
+/* 笔记条目卡片：手写裁图 / 转写文本 / AI 问答三块视觉分区，手机堆叠、宽屏并排（见笔记白皮书 §03t） */
+.entry{border:1px solid var(--line);border-radius:.7em;padding:.75em .85em;margin:.6em 0;background:var(--surface)}
+.entry-head{display:flex;align-items:center;gap:.6em;margin-bottom:.5em;font-size:.85em;color:var(--mute)}
+.entry-body{display:flex;gap:.9em;flex-wrap:wrap;align-items:flex-start}
+.entry-crop{flex:0 0 9em;width:9em;max-width:42%}
+.entry-crop img{width:100%;display:block;border:1px solid var(--line);border-radius:.4em;background:#fff}
+.entry-crop .empty{display:flex;align-items:center;justify-content:center;height:6em;border:1px dashed var(--line);border-radius:.4em;color:var(--mute);font-size:.78em;text-align:center;padding:.4em}
+.entry-main{flex:1;min-width:13em;display:flex;flex-direction:column;gap:.5em}
+.entry-quote{font-size:.85em;color:var(--mute);border-left:3px solid var(--accent);padding:.4em .6em;background:var(--surface2);border-radius:0 .4em .4em 0}
+.entry-text{width:100%;box-sizing:border-box;font-size:.98em;padding:.6em .7em;border:1px solid var(--line);border-radius:.5em;background:var(--surface);color:var(--fg);resize:vertical;min-height:3.4em;font-family:inherit}
+.entry-text:focus{outline:none;border-color:var(--accent)}
+.entry-ops{display:flex;gap:.5em;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.entry-ops .grp{display:flex;gap:.5em;flex-wrap:wrap;align-items:center}
+.entry-ask{border-top:1px dashed var(--line2);padding-top:.55em;margin-top:.15em;display:flex;flex-direction:column;gap:.5em}
+.entry-ask .row{margin:0}
+.entry-answer{font-size:.88em;line-height:1.6;background:color-mix(in srgb,var(--accent) 7%,var(--surface));border:1px solid var(--line);border-radius:.5em;padding:.55em .75em;white-space:pre-wrap}
+.entry-answer b{color:var(--accent)}
+@media(max-width:30em){.entry-crop{flex:1 1 100%;width:100%;max-width:100%}.entry-crop img{max-height:11em;object-fit:contain}}
+/* 转写失败的条目（整理区第二轮反馈点 1，2026-09-08）：标红，跟正常条目一眼区分开，不用去翻转写折叠层 */
+.entry-failed{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.btn-bad{border-color:var(--bad);color:var(--bad)}
+.btn-bad:hover{background:color-mix(in srgb,var(--bad) 10%,var(--surface))}
+/* 回收站列表：紧凑一行，不需要完整卡片那么重 */
+.trash-item{display:flex;flex-wrap:wrap;gap:.4em .6em;align-items:flex-start;padding:.55em 0;border-bottom:1px solid var(--line2)}
+.trash-item:last-child{border-bottom:none}
+/* 徽章单独一行、下面正文+恢复按钮：原来四样挤一行，手机上正文被挤成一列两三个字（2026-09-24 截图走查） */
+.trash-badges{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:.3em}
+.trash-item .txt{flex:1;min-width:0;font-size:.9em;overflow-wrap:anywhere}
+.trash-item .txt .q{color:var(--mute);font-size:.9em}
+/* 各模型用量表（管理台模型面板，点 2「彻底重做」）：字号收紧一点，避免这张卡片被表格撑得太宽 */
+[data-usagewrap] table.cmp{font-size:.82em;min-width:0}
+[data-usagewrap] th,[data-usagewrap] td{padding:.35em .5em}
+/* 全局 toast（2026-09-19：系统内不允许用浏览器原生 alert，风格跟页面其它地方的行内提示完全不一致，
+   还会阻塞交互——统一改这个轻量提示，颜色沿用徽章同一套 --ok/--bad/--warn 变量）。#toasthost 固定在
+   底部居中堆叠，pointer-events:none 不挡页面点击，每条 toast 自己开回 pointer-events 好点掉。 */
+#toasthost{position:fixed;left:0;right:0;bottom:1.2em;display:flex;flex-direction:column;align-items:center;gap:.5em;z-index:50;pointer-events:none;padding:0 1em}
+.toast{pointer-events:auto;max-width:26em;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:.7em;box-shadow:var(--shadow);padding:.7em 1em;font-size:.9em;line-height:1.5;opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease;cursor:pointer;word-break:break-word}
+.toast.show{opacity:1;transform:none}
+.toast.bad{border-color:color-mix(in srgb,var(--bad) 50%,var(--line));color:var(--bad)}
+.toast.ok{border-color:color-mix(in srgb,var(--ok) 50%,var(--line));color:var(--ok)}
+.toast.warn{border-color:color-mix(in srgb,var(--warn) 50%,var(--line));color:var(--warn)}
+.toast.info{border-color:var(--line);color:var(--fg)}
+/* 自定义确认框（2026-09-19：浏览器原生 confirm() 跟已经禁掉的 alert() 是同一类问题——阻塞整个
+   页面、样式跟站内其它地方完全脱节，全站 9 处 confirm() 统一换这个，见 app.js confirmDialog()）。
+   z-index 比 toast 高一档，理论上会话内很少同时出现，但确认框语义上更该压在最上面。 */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:60;padding:1em}
+.confirm-box{background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:.9em;box-shadow:var(--shadow);max-width:26em;width:100%;padding:1.2em}
+.confirm-msg{font-size:.95em;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.confirm-actions{display:flex;justify-content:flex-end;gap:.5em;margin-top:1em}
+.choice-opts{display:flex;flex-wrap:wrap;gap:.5em;margin-top:.9em}
+.choice-note{margin-top:.8em;line-height:1.5}
+.confirm-input{width:100%;box-sizing:border-box;margin-top:.8em;font:inherit;padding:.45em .6em;border:1px solid var(--line);border-radius:.5em;background:var(--bg);color:var(--fg)}
+.stg-orig summary{cursor:pointer;font-weight:600}
+.stg-orig .stg-list{margin-top:.5em}
+
+/* 母版库（2026-09-20 重设计，手机+PC）。PC 上放宽 main（其它页保持 48em 阅读宽度）、列表两列；手机上每行动作换到
+   书名下面、页码收成"上一页 第 x/y 页 下一页"、批量操作栏固定在屏幕底部。 */
+[hidden]{display:none!important}
+.stg-head{margin:.4em 0}
+.stg-headrow{display:flex;align-items:baseline;gap:.6em;flex-wrap:wrap}
+.stg-tools{display:flex;gap:.5em;margin:.6em 0 .3em}
+.stg-tools input{flex:1;min-width:0}
+.stg-tools select{width:auto;max-width:9em}
+.stg-chips{display:flex;gap:.4em;flex-wrap:wrap;margin:.4em 0}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--mute);padding:.4em .9em;border-radius:2em;cursor:pointer;font-size:.9em;white-space:nowrap}
+.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.stg-selrow{display:flex;align-items:center;gap:.6em;flex-wrap:wrap;margin:.4em 0;padding:.5em .2em;border-bottom:1px solid var(--line)}
+.stg-spacer{flex:1}
+.stg-list{list-style:none;margin:.5em 0 0;padding:0;display:flex;flex-direction:column;gap:.5em}
+.stg-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.5em .8em;align-items:start;padding:.65em .8em;border:1px solid var(--line);border-radius:.7em;background:var(--surface)}
+.stg-row.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.stg-check{display:flex;padding-top:.2em}.stg-check input{width:1.25em;height:1.25em;margin:0}
+.stg-name{font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.stg-meta{display:flex;flex-wrap:wrap;gap:.3em .4em;align-items:center;margin-top:.3em}
+.stg-size{font-size:.8em;color:var(--mute)}
+.badge.fmt{font-weight:600}
+.stg-err{color:var(--bad);margin-top:.3em}
+.stg-empty{padding:1em;text-align:center}
+.stg-actions{display:flex;gap:.4em;align-items:center}
+.stg-pager{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 1em;justify-content:space-between;margin:.9em 0 1em}
+.stg-pgnav{display:flex;align-items:center;gap:.35em;flex-wrap:wrap}
+.stg-pgnums{display:inline-flex;gap:.3em;align-items:center}
+.stg-pager select{width:auto}
+.stgbar{position:sticky;bottom:.6em;z-index:9;display:flex;gap:.5em;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:.9em;box-shadow:0 4px 22px rgba(0,0,0,.2);padding:.6em .8em;margin-top:.5em}
+.stgbar progress{flex:1 1 100%;margin:.1em 0}
+.stgbar-main{flex:1 1 12em;min-width:0;overflow-wrap:anywhere}
+.stgbar-count{margin-right:.3em}
+.stgbar.done{border-color:var(--line)}
+.stgbar-fails{flex:1 1 100%}
+@media(max-width:34em){.stg-pgnums{display:none}
+ /* 行内的停止/取消排队按钮换到书名下面：原来占右侧一整列，把徽章和进度挤成窄条（英文文案更明显） */
+ .stg-actions{grid-column:2}}
+@media(min-width:35em){.stg-pgtxt{display:none}}
+.stgbar.sel{flex-direction:column;align-items:stretch;gap:.5em}
+.stgbar-top{display:flex;align-items:center;justify-content:space-between;gap:.6em}
+/* 底部操作栏按钮：每行一排、按列数等分、绝不折行（2026-09-24 用户要求手机端不折行）。列数由 JS 设 --cols；
+   第三行（单本操作+删除）固定 3 列，多选时只有删除，占最右一格。文字过长时省略号兜底而不是换行。 */
+.stgbar-btns{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:.5em}
+.stgbar-btns .btn{min-width:0;height:2.7em;padding:0 .25em;line-height:1;white-space:nowrap;overflow:hidden;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:.25em;font-size:.95em}
+.stgbar-sub .btn-bad{grid-column:-2/-1}
+.stgbar-btns .cnt{font-size:.78em;line-height:1;padding:.18em .45em;border-radius:1em;background:color-mix(in srgb,currentColor 14%,transparent);font-weight:600;flex:0 0 auto}
+@media(max-width:34em){.stgbar-btns .lbl-long{display:none}.stgbar-btns .btn{font-size:.88em}.stgbar-btns .cnt{padding:.15em .35em}}
+@media(max-width:22.5em){.stgbar-btns .btn{font-size:.8em}.stgbar-btns.cols4 .btn{font-size:.74em;padding:0 .1em}}
+a.btn{text-decoration:none;box-sizing:border-box}
+/* 页头在手机窄屏上被挤成竖排（"秘密花园"一字一行）：logo 不换行、主机名/次要链接收起来 */
+header .logo{white-space:nowrap}
+header .links{white-space:nowrap}
+@media(max-width:34em){header{flex-wrap:wrap;gap:.3em .6em;padding:.55em .8em}header small#hdr{display:none}header .links{margin-left:auto;gap:.45em}header .links a{padding:.3em .1em}nav{top:var(--hdr-h,2.9em);padding:.55em .8em}main{padding:.8em}}
+.stgbar-top .btn{flex:0 0 auto}
+.stg-dest{display:flex;flex-direction:column;gap:.4em;margin:.5em 0}
+.stg-newrow{display:flex;gap:.4em;flex:1 1 100%;align-items:center}
+.stg-newrow input{flex:1;min-width:0}
+.stg-muted{color:var(--mute)}
+/* 手机/PC 同一套单列布局（2026-09-20 用户要求界面保持一致、类似其它页面），并保证不产生横向溢出 */
+.stg-root,#stgroot{min-width:0;max-width:100%}
+.stg-row{min-width:0}
+.stg-main{min-width:0;overflow-wrap:anywhere}
+.stg-meta{min-width:0}
+.stg-actions{flex-shrink:0}
+/* 加入位置：两个下拉同一行（各自上方一个小标签），手机上也并排 */
+.stg-destpair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6em}
+.stg-destcol{display:flex;flex-direction:column;gap:.2em;min-width:0}
+.stg-destcol select{width:100%;min-width:0}
+.nsearch{list-style:none;margin:.3em 0 0;padding:0}
+.nsearch li{padding:.55em .2em;border-top:1px solid var(--line2);cursor:pointer;line-height:1.5;word-break:break-word}
+.nsearch li:hover{background:var(--surface2)}
+/* 「管理 → 设备健康」（2026-09-25）：上次开机日志 / 恢复命令的等宽块自己横向滚动、不撑宽页面；OTA 横幅在标签栏下面、跟 main 同宽。 */
+.hlog{max-height:24em;overflow-y:auto;font-size:.78em;line-height:1.45;background:var(--surface2);border-radius:.5em;padding:.6em .7em;margin:.4em 0;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
+.otabanner{max-width:48em;margin:.8em auto 0;padding:.8em 1em;border:1px solid color-mix(in srgb,var(--warn) 60%,var(--line));background:color-mix(in srgb,var(--warn) 10%,var(--surface));border-radius:.9em;font-size:.9em;overflow-wrap:anywhere}
+.otabanner ul{margin:.4em 0;padding-left:1.2em}.otabanner p{margin:.4em 0}
+.otabanner .btn.x{float:right;margin:-.3em -.4em 0 .5em}
+@media(max-width:34em){.otabanner{margin:.6em .8em 0}}
+/* 触屏上的可点区域（2026-09-24 截图走查量出来按钮 32px、页头链接 29px、开关复选框 13px）：粗指针设备统一撑到
+   40px 左右；只撑热区不放大字号，桌面鼠标不受影响。 */
+@media (pointer:coarse){
+ .btn,.chip,nav button{min-height:40px}
+ header .links a{min-height:40px;min-width:40px;display:inline-flex;align-items:center;justify-content:center}
+ #langsel{min-height:40px}
+ .toggle{min-height:40px}
+ .stg-check{padding:.6em;margin:-.6em}
+}

@@ -1,0 +1,22 @@
+[Unit]
+Description=笔记·脑：按条目单发问 AI——问题 + 上下文 → 文字模型 → answer 写回（loopback 8797）
+# 启动顺序（2026-09-24）：排在 xovi-reenable 之后——开机时 xochitl 要带 xovi 再重启一次，先让它把界面拉起来、
+# 本服务再起，免得抢 CPU。只是本单元单方面的顺序约束（After= 不是 Requires=），xochitl 不会等本服务（红线）；
+# xovi-reenable 没装时这条自动失效。不依赖 network-online.target：只监听回环/0.0.0.0，调云端按需发、失败重试，
+# 此前拉上它会让开机为本组服务专门跑 NetworkManager-wait-online（没 WiFi 时等到超时）。
+After=home.mount xovi-reenable.service
+PartOf=shelf.target
+
+[Service]
+Type=simple
+ExecStart=/home/root/.local/bin/mind-serve serve --bind 127.0.0.1:8797
+Restart=on-failure
+RestartSec=5
+# 没有后台线程/事件订阅，纯被动等 HTTP 请求——比 transcribe-serve 还轻（连 SSE 订阅都不用起，
+# 二期耗电评估第 5 点已确认这版改动更省电，不会更费）。
+CPUWeight=20
+MemoryMax=128M
+Nice=5
+
+[Install]
+WantedBy=shelf.target
