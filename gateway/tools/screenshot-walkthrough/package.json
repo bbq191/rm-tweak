@@ -1,0 +1,9 @@
+{
+  "name": "gateway-screenshot-walkthrough",
+  "private": true,
+  "description": "前端可视渲染走查工具（Playwright），见 README.md；不发布，仅本地/CI 手动跑。",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

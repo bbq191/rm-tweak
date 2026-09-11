@@ -1,0 +1,40 @@
+[package]
+name = "bookconv"
+version = "0.1.0"
+edition = "2021"
+description = "通用电子书内容层：多格式→EPUB/PDF 转换、EPUB 优化器、e-ink 图片处理、EPUB 组装（从 weread-device 抽出，weread 线与书架共用）"
+license = "MIT"
+
+[dependencies]
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+ureq = "2"
+png = "0.17"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# PNG 像素 /FlateDecode 压缩（pdfwrite），纯 Rust、musl 友好
+miniz_oxide = "0.8"
+# 图片降采样/抖动：只启 jpeg+png 控体积
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+# FB2→EPUB；quick-xml 版本须与 fb2 一致(0.30)
+fb2 = "0.4"
+quick-xml = { version = "0.30", features = ["serialize", "encoding"] }
+# 网文获取（readlater 下沉，2026-09-05）：Readability 可读性抽取 + scraper 白名单重序列化成合法 XHTML
+readability-rust = "0.1.0"
+scraper = "0.18"
+ego-tree = "0.6"
+
+[dev-dependencies]
+tempfile = "3"
+
+# host/设备通用 CLI：对一本 EPUB 跑同一 optimize_epub（wash_epub.sh 末步用）。随内容层从 weread-device 迁入。
+[[bin]]
+name = "epub-optimize"
+path = "src/bin/epub_optimize.rs"
+
+# host CLI：漫画 CBZ→PDF（`shelf push` 判断体积够小时顺带出一份投原生用的 PDF；2026-09-08 复活，
+# `convert::cbz::cbz_to_pdf` 本体 2026-09-05 §03t 就没删过，只是删了 shelf 侧的调用方，见白皮书）。
+[[bin]]
+name = "cbz2pdf"
+path = "src/bin/cbz2pdf.rs"

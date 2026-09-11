@@ -1,0 +1,19 @@
+[Unit]
+Description=书架·壁纸（loopback 8793）
+# 二进制/数据在 /home，故依赖 home.mount；这是本服务自己的依赖，**不牵连 xochitl 本体**（红线）。
+After=home.mount network-online.target
+Wants=network-online.target
+PartOf=shelf.target
+
+[Service]
+Type=simple
+ExecStart=/home/root/.local/bin/wallpaper-serve serve --bind 127.0.0.1:8793
+Restart=on-failure
+RestartSec=5
+# 与 wr-serve 同款软限：只降权不硬顶（交互式重活需要突发），MemoryMax 兜内存（上传走流式落盘）。
+CPUWeight=20
+MemoryMax=192M
+Nice=5
+
+[Install]
+WantedBy=shelf.target

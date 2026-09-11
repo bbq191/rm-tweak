@@ -1,0 +1,21 @@
+[package]
+name = "mind-serve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "笔记·脑：按条目单发问 AI——书名+章节+勾画原文+转写文本+用户问题拼提示词发文字模型，写回 answer"
+
+[[bin]]
+name = "mind-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../../rmsvc-core" }
+notecore = { path = "../../crates/notecore" }
+vendorcfg = { path = "../../crates/vendorcfg" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = "2"
+
+[dev-dependencies]
+tempfile = "3"

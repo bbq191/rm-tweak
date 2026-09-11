@@ -1,0 +1,22 @@
+[package]
+name = "ink-serve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "笔记·矿：监听原生书库，解析书页 .rm（勾画 + 旁边手写）→ 条目库（唯一事实源）+ 裁图；另拉 koreader-serve 的高亮/生词回流"
+
+[[bin]]
+name = "ink-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../../rmsvc-core" }
+rmv6 = { path = "../../crates/rmv6" }
+epubmap = { path = "../../crates/epubmap" }
+notecore = { path = "../../crates/notecore" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[dev-dependencies]
+tempfile = "3"

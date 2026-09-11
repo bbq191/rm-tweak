@@ -1,0 +1,22 @@
+[package]
+name = "koreader-serve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "书架·KOReader：从母版库落书到 books/、运行态、字体/词典、配置同步执行端、高亮/生词只读原始数据"
+
+[[bin]]
+name = "koreader-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../../rmsvc-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
+# 只在 host 测试里用，生产二进制不链它：`rusqlite`（bundled sqlite3 C）交叉编译到 aarch64-musl 会
+# 链接失败（sqlite3.c 用 glibc 的 open64/stat64 这类 LFS64 符号，musl 没有），见 sqlite_min.rs 顶部
+# 注释。这里只借它造真实 SQLite 文件当 fixture，差分测试 sqlite_min 手写的纯 Rust 解析器。
+rusqlite = { version = "0.32", features = ["bundled"] }

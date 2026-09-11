@@ -1,0 +1,187 @@
+AFFECT [[17477757197668945522]]
+    TRAVERSE [[7711468349764991]] > [[6502786168]]:[[477062473974076915]]
+        REMOVE [[8545339034058226003]][.[[8399878573055752961]]=[["15264041274426464048]]]
+    END TRAVERSE
+END AFFECT
+AFFECT [[8850026134298937527]]
+    IMPORT net.asivery.AppLoad [[180922.180921]]
+    IMPORT [[6504469795.6504031891.7713050416939675]] [[180922.180921]]
+    TRAVERSE [[8397993708429497603]]
+        LOCATE BEFORE [[7081645463424]]#[[16535813298890332374]]
+        INSERT {
+            property ~&214620122227&~ appLoadView: _appLoadView
+            required property ~&197102514&~ apploadVKB
+            required property ~&197102514&~ apploadWindowParent
+        }
+
+        LOCATE AFTER [[7081645463424]]#[[16535813298890332374]]
+        INSERT {
+            ~&7081645463424&~ {
+                ~&5972374&~: _appLoadView
+                ~&233721384511543&~.~&6503816592&~: ~&7083038346995&~
+                ~&233748328658231&~: ~&214625660372&~
+                ~&7082453764421&~: ~&6504329801&~
+                ~&7083172477658&~: "qrc:/appload/qml/appload.qml"
+
+                ~&7713401454751279&~: {
+                    _appLoadView.~&6503936152&~.absoluteRoot = apploadWindowParent;
+                    _appLoadView.item.virtualKeyboardRef = apploadVKB;
+                }
+            }
+
+            ~&428051690305612204&~ {
+                ~&7083194890448&~: _appLoadView.~&6503936152&~
+
+                function onRequestClose() {
+                    _appLoadView.~&233748328658231&~ = ~&214625660372&~;
+                }
+            }
+        }
+    END TRAVERSE
+END AFFECT
+
+AFFECT [[2328484894988065446]]
+    TRAVERSE [[8397788359424131273]]
+        TRAVERSE ?#[[254540341572282132]]
+            LOCATE BEFORE ALL
+            INSERT {
+                apploadVKB: _apploadVirtualKeyboard
+                apploadWindowParent: windowParent
+            }
+        END TRAVERSE
+        LOCATE BEFORE [[7081372714662.10578197394989910333]]
+        INSERT {
+            Item {
+                id: windowParent
+                anchors.fill: parent
+            }
+            Loader {
+                id: _apploadVirtualKeyboard
+
+                property var layout: null
+                property var config: null
+                width: parent.width
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                active: false
+                visible: active
+                source: "qrc:/appload/qml/virtualKeyboard/Keyboard.qml"
+
+                onLoaded: () => {
+                    console.log("Rebuild keyboard data: ", _apploadVirtualKeyboard.layout, _apploadVirtualKeyboard.config);
+                    _apploadVirtualKeyboard.item.rebuildKeyboard(_apploadVirtualKeyboard.layout, _apploadVirtualKeyboard.config);
+                }
+            }
+        }
+    END TRAVERSE
+END AFFECT
+
+AFFECT [[4911547370760691430]]
+    TRAVERSE [[3819512207256720568]] > [[14125623155555875541]]#[[15885405667098360701]]
+        LOCATE AFTER [[3819512207256720568]]#[[4073320026945606142]]
+        INSERT {
+            ~&16385778650434842232&~ {
+                ~&5972374&~: openAppLoad
+                ~&8399878573055752961&~: "openAppLoad"
+                ~&214642559243&~: ~&6504222003&~("AppLoad")
+                ~&8399601734642709923&~: "qrc:/appload/icons/appload"
+                ~&7082453764421&~: ~&214625660372&~
+                ~&233726547792244&~: ~&6504329801&~
+                ~&254542236275632405&~: {
+                    ~&7712792149454042&~();
+                    ~&6504254477&~.~&6500896584423236548&~();
+                }
+                ~&7081629735527&~.~&17520348323745447649&~: ~&7082020628281&~.~&15061686673205541622&~
+                ~&7081629735527&~.~&7797818826744279624&~: ~&7083038346995&~.~&214646099849&~
+                ~&11921478716705041271&~: ~&6504254477&~
+
+                function ~&7712792149454042&~() {
+                    ~&7083211098251&~();
+                    ~&254540341572282132&~.appLoadView.~&233748328658231&~ = ~&6504329801&~;
+                }
+            }
+        }
+    END TRAVERSE
+    TRAVERSE [[3819512207256720568]]#[[6504254477]]
+        REBUILD [[15578034235503008618]]
+            LOCATE AFTER STREAM \~&16045040163728568448&~\ INSERT STREAM \, openAppLoad\
+        END REBUILD
+    END TRAVERSE
+END AFFECT
+
+
+; Reach within the appload files themselves:
+AFFECT /appload/qml/window.qml
+    IMPORT [[6504469795.6504031891.7713050416939675]] [[180922.180921]]
+    IMPORT [[6504469795.6504031891.15778643682317564345]] [[180922.180921]]
+    IMPORT [[7082546018834]] [[180922.180921]]
+    TRAVERSE [[8397993708429497603]]
+        TRAVERSE [[254501108490678590]]#mainWindowView
+            REPLACE [[254494525842443467]]#qmldiffEventBlocker WITH {
+                ~&254494525842443467&~ {
+                    ~&233721384511543&~.~&6503816592&~: ~&7083038346995&~
+                }
+                ~&254504370080162629&~ {
+                    ~&233721384511543&~.~&6503816592&~: ~&7083038346995&~
+                    ~&8545339034058226003&~ {
+                        ~&8399878573055752961&~: "close-appload-application"
+                        ~&254526613107157226&~: ~&5971598&~.~&214638019283&~(0, 1)
+                        ~&6503646466&~: ~&5971598&~.~&6504243191&~(0, 0, ~&7083038346995&~.~&214646099849&~, ~&7082020628281&~.~&496707965879903317&~)
+                        ~&233726547792244&~: !coord.disableGestures
+                        ~&495358363329399331&~: swipeFromTheTop()
+                    }
+                }
+            }
+        END TRAVERSE
+        REMOVE [[7081261925573]]#qmldiffReplaceMeButton
+    END TRAVERSE
+END AFFECT
+
+AFFECT /appload/qml/window.qml
+    IMPORT [[6504469795.6504031891.482865292219586403]] [[180922.180921]]
+    IMPORT [[6504469795.6504031891.7082625047238]] [[180922.180921]] [[7081372714662]]
+    TRAVERSE [[8397993708429497603]] > [[254501108490678590]] > FBController
+        LOCATE BEFORE ALL
+        INSERT {
+            ~&7081372714662&~.~&10578197394989910333&~ {
+                ~&233721384511543&~.~&6503816592&~: ~&7083038346995&~
+                ~&233748328658231&~: !~&6504254477&~.minimized && windowCanvas.~&7082453764421&~
+                ~&8399878573055752961&~: "appload-window"
+                ~&6504074414&~: [
+                    ~&7081372714662&~.~&10578197394989910333&~.~&197061260&~,
+                    ~&7081372714662&~.~&10578197394989910333&~.~&6502924770&~,
+                    ~&7081372714662&~.~&10578197394989910333&~.~&254477590585233257&~,
+                    ~&7081372714662&~.~&10578197394989910333&~.~&233682693073220&~,
+                    ~&7081372714662&~.~&10578197394989910333&~.~&5971687&~,
+                ][windowCanvas.refreshMode]
+            }
+
+            onRequestFullRefresh: () => {
+                ~&482865290967253827&~.~&8021204117616398611&~(~&"2385305732936506181&~);
+            }
+        }
+    END TRAVERSE
+END AFFECT
+
+AFFECT /qt/qml/net/asivery/ApploadUtils/DisplayMethodArea.qml
+    IMPORT [[6504469795.6504031891.7082625047238]] [[180922.180921]] [[7081372714662]]
+    REDEFINE [[6502786168]]
+        LOCATE BEFORE ALL
+        REPLACE { ~&6502786168&~ } WITH { ~&7081372714662&~.~&10578197394989910333&~ }
+    END REDEFINE
+
+    LOCATE BEFORE ALL
+    TRAVERSE [[7081372714662.10578197394989910333]]
+        LOCATE AFTER ALL
+        INSERT {
+            ~&6504074414&~: [
+                ~&7081372714662&~.~&10578197394989910333&~.~&197061260&~,
+                ~&7081372714662&~.~&10578197394989910333&~.~&6502924770&~,
+                ~&7081372714662&~.~&10578197394989910333&~.~&254477590585233257&~,
+                ~&7081372714662&~.~&10578197394989910333&~.~&5971687&~,
+                ~&7081372714662&~.~&10578197394989910333&~.~&233682693073220&~
+            ][displayMethod]
+        }
+        REMOVE onDisplayMethodChanged
+    END TRAVERSE
+END AFFECT

@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+<qresource prefix="/cangjie/icons">
+    <file alias="koreader">sidebar-icon-koreader.png</file>
+    <file alias="weread">sidebar-icon-weread.png</file>
+</qresource>
+</RCC>

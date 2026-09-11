@@ -1,0 +1,8 @@
+[Unit]
+Description=书架（cang-jie shelf）全部服务
+# 各服务 PartOf=shelf.target + WantedBy=shelf.target：`systemctl start/stop shelf.target` 一键起停，
+# 单个服务可独立 enable/disable（拔插）。本 target 自身挂 multi-user.target 开机拉起。
+After=home.mount
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,94 @@
+; ─────────────────────────────────────────────────────────────────────────
+; shelf-mkdir-agent.qmd —— 书库「建文件夹」代理（固件 3.28 线）。
+;
+; 【2026-09-19 复活】这份 qmd 2026-09-07 最早为 note-serve 的《书名》自动建夹需求写的，2026-09-09
+;   note-serve 改成复用书本自己的设备文件夹不再需要，2026-09-15 当死代码物理删除。这次真正的消费方
+;   是网页母版库「加入 xochitl → 文件夹」自由输入框（用户反馈"填个文件夹名依然不会创建文件夹"）——
+;   `book-serve::staging::Staging::deliver` 落库前先查文件夹存不存在，不存在就调 `POST /mkdir/add`
+;   入队，同步等本代理真建出来再继续投递（`fswatch::watch_until` 轮询 `.metadata` 落盘，见
+;   `staging.rs::ensure_folder`）。下面这段 qmd 本身**原样从删除前的版本捞回，一个字没改**——反编译
+;   分析当年就做完了，只是一直没等到真消费方；下面【安全】提到的"没有真机验证过重复调用"这条风险
+;   这次会随真实投递流程一起验证，见白皮书对应记录。
+;
+; 【为什么要它】`/upload` 落哪个文件夹靠"先 GET 那个文件夹的 uuid 再 GET /documents/<uuid> 置当前
+;   文件夹"（rmsvc_core::xochitl::Xochitl::upload）——文件夹不存在就 best-effort 落书库根。外部进程
+;   没有创建文件夹的合法通道（跟不能直接改 .metadata 一样，改了会被运行中 xochitl 的内存文档模型盖
+;   回去）；真正建文件夹必须走 xochitl 自己的代码路。
+;
+; 【反编译坐实的路径】离线 extract_qml 全量解出真机 xochitl 内嵌 QML（2026-09-07，`xovi-extensions/
+;   reading-qol/tools/extract_qml.py` 对拍固件 md5 952f1e28fcf173888f1dd4eaf7267450）：
+;   `library-ui/window/create-collection` 窗口（点开"新建文件夹"对话框那条路）里，确认按钮的
+;   处理函数是 `root.library.createCollection(parentFolderId, collectionName)`，其中 `root.library`
+;   在别处（如 MainView.qml 内 `PageSelection { library: Library }`）被绑定为**裸全局单例 `Library`**
+;   （`import xofm.libs.library`；同模块另有 `LibraryController` 单例，二者不是同一个对象，
+;   `Library` 才有 `createCollection`/`entryForId`/`isReady` 这批方法，全项目多处直接裸调
+;   `Library.xxx` 不经对话框，证明它确实是全局可达单例，不是仅限对话框内部的局部绑定）。
+;   顶层（书库根）`parentFolderId` = 空字符串——`currentFolderId` 声明处的缺省值就是 `""`
+;   （`qml_00e46516.qml:20 property string currentFolderId: ""`），跟本项目其余地方"根文件夹 parent
+;   为空串"的约定一致（book-serve `.metadata` 落地、`Xochitl::upload` 的 `set_folder("")` 同理）。
+;   **没有真机点过这个对话框做交叉验证**（那样会真建一个用户可见的文件夹，干扰度更高）——这条结论
+;   目前只到"反编译 + 静态调用链一致"这一步，比"形状看着像"更硬，但还没有"UI 手点后 .metadata 真的
+;   多了一条 CollectionType 记录"这层最终验证；先用 note-serve 真实业务场景（下方"真机验证"节）间接
+;   验证，如果后续发现建出来的文件夹有问题（比如漏了某个必填的兄弟调用），再回来加。
+;
+; 【为什么锚点选 MainView 而不是 Sidebar】`shelf-trash-agent.qmd` 注入 `Sidebar.qml`，但 Sidebar
+;   没有 `import xofm.libs.library`——要用 `Library` 单例得先加一条 IMPORT，而 qmldiff 的 IMPORT
+;   语句强制要求显式版本号，实测源文件里 `xofm.libs.library` 是 Qt6 新式无版本 import，硬造一个版本号
+;   （如 `1.0`）风险不可控、没法离线验证是否真的解析成功。MainView.qml（书库+文档常驻宿主，
+;   `cardhw-notify.qmd` 已用过的同一份文件/同一个锚点）本来就 `import xofm.libs.library` +
+;   `import com.remarkable`，直接用现成裸单例，不用改 import 列表——更小的改动面。
+;
+; 【队列后端】book-serve 新增 `mkdir.rs`（`MkdirQueue`，跟 `trash.rs` 同款 JSON 落盘队列，各自独立，
+;   都在 `$XDG_STATE_HOME/shelf/books/`）：`POST /mkdir/add {name}` 入队（note-serve 上传前发现目标
+;   文件夹不存在时调用，fire-and-forget、不阻塞本次上传）、`GET /mkdir/pending` 本代理拉取执行
+;   （顺手把已经真实存在的文件夹名从队列里剔除，不需要 QML 端 ack，跟 trash 队列的剔除方式对称）。
+;
+; 【触发】没有类似"打开书库文件夹视图"那种天然事件可等——建文件夹必须先于 /upload 发生，不能等
+;   上传后的 rowsInserted 才反应（因果顺序反了）。只能轮询：8s 一个 Timer（跟 cardhw-notify.qmd 的
+;   5s 文件轮询、shelf-trash-agent.qmd 的 4s 防抖是同一量级的"轮询成本可忽略"判断——loopback HTTP
+;   GET 一份几十字节的 JSON，多数时候 `names` 是空数组）。
+;
+; 【安全】`Library.createCollection` 不依赖任何"当前选中"状态（不像 trash 需要 `selection` 且必须
+;   selection.size===0 才敢动），本身没有"误伤已有数据"的路径——最坏情况是名字冲突/重复调用，
+;   `Library.uniqueVisibleName` 那条路是原生对话框自己去重的逻辑，本代理没走那条、直接传队列里的
+;   名字，如果两次入队同名文件夹，`book-serve::mkdir.rs` 的 `add()` 去重 + `pending()` 里"文件夹已存在
+;   即剔除"这两层兜底应该够用，但**没有真机验证过"重复调用 createCollection 传同名会不会建出两个重名
+;   文件夹"**——这层风险记在这里，白皮书验证清单里核一下。
+;
+; 【qmldiff 纪律】INSERT{} 内注释只能 //；handler 一律 `{ … }` 块、不写 `({})`；只 INSERT 不 REPLACE。
+; ─────────────────────────────────────────────────────────────────────────
+
+AFFECT /qml/device/view/main/MainView.qml
+
+    TRAVERSE ?#root
+        LOCATE AFTER FocusScope#rootItem
+        INSERT {
+            Timer {
+                id: shelfMkdirAgent
+                objectName: "shelfMkdirAgent"
+                interval: 8000
+                running: true
+                repeat: true
+                onTriggered: {
+                    var x = new XMLHttpRequest();
+                    x.onreadystatechange = function() {
+                        if (x.readyState !== XMLHttpRequest.DONE) { return; }
+                        if (x.status !== 200) { return; }
+                        try {
+                            var resp = JSON.parse(x.responseText);
+                            var names = resp.names || [];
+                            for (var i = 0; i < names.length; i++) {
+                                Library.createCollection("", names[i]);
+                                console.log("SHELF-MKDIR: created " + names[i]);
+                            }
+                        } catch (e) {
+                        }
+                    };
+                    x.open("GET", "http://127.0.0.1:8790/mkdir/pending");
+                    x.send();
+                }
+            }
+        }
+    END TRAVERSE
+
+END AFFECT
