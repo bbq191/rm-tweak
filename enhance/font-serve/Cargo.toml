@@ -1,0 +1,26 @@
+[package]
+name = "font-serve"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "字体：上传即装（fontconfig 用户字体目录 + fonts.json + 中文回退链）。2026-09-11 从 shelf/services/font-serve 挪进 enhance/——概念上更贴近系统增强，挂靠 gateway/ 网页托管跟源码放哪无关。"
+
+[[bin]]
+name = "font-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../rmsvc-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+# 独立顶层 crate，不在任何 workspace 内；profile 跟 shelf/notes/gateway 同款：设备端体积优先、全静态 musl。
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
+codegen-units = 1

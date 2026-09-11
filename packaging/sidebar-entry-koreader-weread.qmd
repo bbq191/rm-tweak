@@ -1,0 +1,107 @@
+; ─────────────────────────────────────────────────────────────────────────
+; sidebar-entry-koreader-weread.qmd —— Sidebar 一级直达「KOReader」+「WeRead」入口（固件 3.28 线）。
+;
+; 2026-09-13 从 oldbak/xovi-extensions/reading-qol/koreader-sidebar-entry.qmd 捞回 packaging/
+; 重新纳入版本控制（内容跟设备现役那份逐字一致，没有重写）。`deploy-sidebar-entry.sh` 探测到
+; 设备已经装了第三方 WeRead app 时用这份；没装就退回姊妹文件 `sidebar-entry-koreader-only.qmd`
+; ——WeRead 不是这个仓库能装的东西（要求用户自己下载官方发行包 SSH 装），不能假设它一定在，
+; 硬塞一个点了没反应的按钮。
+;
+; 【背景】双阅读器分工后 KOReader 是消遣阅读主力，但入口藏在 Sidebar→AppLoad 二级菜单。
+;   「彻底取代 xochitl」在 Move 上架构判死（无 /dev/fb，显示合成器活在 xochitl 进程内，
+;   KOReader 靠 appload 的 qtfb 桥显示；独立显示层 oxide/blight 在 imx93 真机崩、判死有效）。
+;   本 qmd 做「最外层入口」：Import files 折叠区正下方一条原生同款隔离线 + 「KOReader」项
+;   （Ko 字标），并运行时隐藏 AppLoad 菜单项。
+;
+; 【2026-09-13 追加 WeRead】用户另外装了一份第三方 WeRead app（跟本项目已砍的旧微读管线无关），
+;   装机脚本因为 OS 是 3.28 而保守跳过了拷 AppLoad
+;   图标那步，但随包其实带了现成的 `appload/{external.manifest.json,appload-launch.sh,icon.png}`
+;   （已手动补拷到 `~/xovi/exthome/appload/weread/`）。要求"以同样的形式显示在 KOReader 下方"——
+;   直接在同一个 INSERT 块里紧跟 KOReader 项后面再插一个同构 `ArkControls.SidebarItem`，两者共用
+;   上面唯一的一条隔离线，不需要新锚点/新 qmd。WeRead 的 app id 同理是 `external::weread`（appload
+;   目录名，见 library.cpp:245 前缀拼接规则）。图标 "We" 字标同一套 alpha 蒙版管线，见
+;   `README.md`「Sidebar 一级入口图标」。
+;
+; 【机制】appload 暴露 QML 单例 AppLoadLauncher（import net.asivery.AppLoad 1.0，
+;   Launcher.h: Q_INVOKABLE launchApplication(id, args, env, window)→emit requestLaunch），
+;   接收方 Connections 活在 appload 注入的常驻 Loader 里（开机即实例化、只切可见性），
+;   故任意 QML 上下文随时可调。⚠ app id = **external::<目录名>**（library.cpp:245 前缀拼接），
+;   裸 "koreader" 报 No application installed（2026-09-02 真机踩过）。
+;
+; 【3.28 变化（2026-09-06，extract_qml blob qml_00dcd9d7，3.28.0.172）】Sidebar 项类型
+;   SidebarFilterItem → **ArkControls.SidebarItem**（属性 title→text、active→highlighted、无 navigationHandler）；
+;   DeviceKeyboardNavigationHandler#integrationsHandler 已删，Import files 折叠区改为
+;   **ArkControls.SidebarFoldout#integrationsFoldout**（appload PR #59 同一锚点）；Values → Common.Values。
+;   appload 0.5.3 自身的 qmd 也钩这两个旧锚点，3.28 上要用 PR #59 的 qmd 回填进 .so（系统增强白皮书）。
+;   【qmldiff 纪律】INSERT{} 内注释只能 //；handler 一律 `{ … }` 块、不写 `({})`（书架白皮书 §04）。
+; ─────────────────────────────────────────────────────────────────────────
+
+AFFECT /qml/device/view/navigator/Sidebar.qml
+    IMPORT net.asivery.AppLoad 1.0 CJAppLoad
+    TRAVERSE ?#filterColumn
+        LOCATE AFTER ArkControls.SidebarFoldout#integrationsFoldout
+        INSERT {
+            Item {
+                // 与原生 Trash/Guides 之间那条完全同款的隔离线
+                Layout.preferredWidth: parent.width
+                height: 2
+                Rectangle {
+                    anchors.fill: parent
+                    color: Common.Values.colorBlack
+                }
+            }
+            ArkControls.SidebarItem {
+                id: cjKoreaderEntry
+                objectName: "cjKoreaderEntry"
+                text: "KOReader"
+                // 落位：Import files 折叠区正下方 + 自带隔离线。onCompleted 遍历兄弟：隐藏 appload
+                // 注入的 AppLoad 项（3.28 属性名是 text）+ 打印各项进日志（CJ-SIDEBAR[i]）。
+                Component.onCompleted: {
+                    try {
+                        var col = cjKoreaderEntry.parent;
+                        for (var i = 0; i < col.children.length; i++) {
+                            var c = col.children[i];
+                            var t = (c && c.text !== undefined && c.text) ? c.text : "";
+                            console.warn("CJ-SIDEBAR[" + i + "]: " + (t || c.toString().split("(")[0]));
+                            if (t === "AppLoad") {
+                                c.visible = false;
+                                console.warn("CJ-SIDEBAR: AppLoad hidden");
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("CJ-SIDEBAR walk fail: " + e);
+                    }
+                }
+                // iconSource 走 ArkControls.Icon 染色管线且只认 qrc：图标由 cangjie-icons.rcc
+                // （qt-resource-rebuilder .rcc 通道）注册为 qrc:/cangjie/icons/koreader（见 README.md）。
+                iconSource: "qrc:/cangjie/icons/koreader"
+                highlighted: false
+                enabled: true
+                onClicked: {
+                    console.warn("CJ-KOREADER-ENTRY: launch requested");
+                    root.toggle();
+                    CJAppLoad.AppLoadLauncher.launchApplication("external::koreader", [], {}, false);
+                }
+                Layout.preferredHeight: Common.Values.navigatorSidebarItemHeight
+                Layout.preferredWidth: parent.width
+            }
+            ArkControls.SidebarItem {
+                id: cjWereadEntry
+                objectName: "cjWereadEntry"
+                text: "WeRead"
+                // 紧跟 KOReader 项之后，共用上面那一条隔离线，不需要单独的 onCompleted 遍历/
+                // 隐藏逻辑（KOReader 项那份 onCompleted 已经扫过整个 filterColumn 一次）。
+                iconSource: "qrc:/cangjie/icons/weread"
+                highlighted: false
+                enabled: true
+                onClicked: {
+                    console.warn("CJ-WEREAD-ENTRY: launch requested");
+                    root.toggle();
+                    CJAppLoad.AppLoadLauncher.launchApplication("external::weread", [], {}, false);
+                }
+                Layout.preferredHeight: Common.Values.navigatorSidebarItemHeight
+                Layout.preferredWidth: parent.width
+            }
+        }
+    END TRAVERSE
+END AFFECT

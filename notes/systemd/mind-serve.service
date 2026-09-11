@@ -1,0 +1,19 @@
+[Unit]
+Description=笔记·脑：按条目单发问 AI——问题 + 上下文 → 文字模型 → answer 写回（loopback 8797）
+After=home.mount network-online.target
+Wants=network-online.target
+PartOf=shelf.target
+
+[Service]
+Type=simple
+ExecStart=/home/root/.local/bin/mind-serve serve --bind 127.0.0.1:8797
+Restart=on-failure
+RestartSec=5
+# 没有后台线程/事件订阅，纯被动等 HTTP 请求——比 transcribe-serve 还轻（连 SSE 订阅都不用起，
+# 二期耗电评估第 5 点已确认这版改动更省电，不会更费）。
+CPUWeight=20
+MemoryMax=128M
+Nice=5
+
+[Install]
+WantedBy=shelf.target

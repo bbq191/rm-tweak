@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────
+# cang-jie —— host 侧 Python 工具统一环境（uv 管理）
+#
+# 定位：本项目生产实现在 Rust(reading/device-rs、knowledge/pkm/device-rs) 与 C(chinese-ime/langhook、
+#   pinyin-engine/c)。这里的 Python 全是 host 侧「测试 / 原型 / 离线工具」，
+#   不打包分发，故声明为虚拟项目（package = false）：uv 只负责建一个统一 .venv
+#   + 锁依赖，不构建/安装本项目自身。
+#
+# 用法：
+#   uv sync                     # 建 .venv 并装 default-groups
+#   uv sync --all-groups        # 装全部线
+#   uv run pytest               # 在统一环境跑测试
+#   uv run python xovi-extensions/reading-qol/tools/extract_qml.py ...
+#
+# 许可证留痕（沿用旧 requirements.txt，按项目纪律实测 dist-info 确认，非凭印象）：
+#   pytest MIT · qrcode BSD-3-Clause(实测2026-08-13, Copyright Lincoln Loop)
+#   rmscene MIT(.rm v6 读写) · 其余 requests/flask/lxml/numpy/pillow/bs4/
+#   websocket-client/wcwidth/requests-toolbelt 均 host 联调依赖，动版本再逐一实测。
+# ─────────────────────────────────────────────────────────────
+
+[project]
+name = "cang-jie-tools"
+version = "0"
+description = "Host-side helper/test tooling for the cang-jie reMarkable project (not distributed)"
+requires-python = ">=3.11"
+dependencies = []   # 无「always-on」依赖；一切按线放进 dependency-groups
+
+[dependency-groups]
+# 微信读书集成 host 联调（下载/组包/登录/面板 bridge/highlights 反解）。
+# 2026-09-11：这条下书链本身已确认停用（代码归档进 oldbak/reading/、oldbak/rm-export/），
+# 刻意移出 default-groups（同 calibre 组模式）——只在要跑归档代码考古时 `uv sync --group weread`。
+weread = [
+    "requests",
+    "requests-toolbelt",
+    "flask",
+    "pillow",
+    "numpy",
+    "wcwidth",
+    "lxml",
+    "beautifulsoup4",
+    "websocket-client",
+    "qrcode",
+    "rmscene",
+]
+# PKM ★待办检测 Python 原型 + .rm 导出（生产实现 knowledge/pkm/ 的 Rust 2026-09-11 随大归档
+# 挪出了本仓库，现只在本机 oldbak/knowledge/pkm/——这个 group 本身仍留着给 rmscene 相关的
+# host 侧原型/考古用，不因为生产代码挪走就跟着删）
+pkm = [
+    "rmscene",
+]
+# 拼音引擎 host 侧算法原型 + 差分测试（生产实现 chinese-ime/pinyin-engine/c 的 C 同样已挪出
+# 本仓库，现只在本机 oldbak/chinese-ime/pinyin-engine/c——理由同上，group 留着不删）
+# 许可证：PyYAML MIT · OpenCC Apache-2.0（均 host 工具依赖，不编进 .so）。
+# PySide6（ui/ 候选栏 GUI demo）刻意不进环境——它重且仅演示用，走系统 python3。
+pinyin = [
+    "pyyaml",      # src/shuangpin.py 双拼方案表
+    "opencc",      # src/traditional.py 繁简转换
+]
+# 离线工具（从 xochitl 二进制解 QML 等）
+tools = [
+    "zstandard",
+]
+# Calibre 前置渲染流水线（shelf/host/calibre/：产物体检 check_output.py、PDF 裁边；2026-09-03 自 reading/tools/calibre 迁入）
+# 刻意不进 default-groups：仅 host 侧按需 `uv run --group calibre`，CI 不背这份重量。
+calibre = [
+    "pymupdf",
+    "pillow",  # comic_gray.py 漫画 16 灰
+]
+# 差分测试 / 单测（全线共用）
+test = [
+    "pytest",
+]
+dev = [
+    "mobi>=0.4.1",
+]
+
+[tool.uv]
+package = false                                   # 虚拟项目：管环境，不构建自身
+default-groups = ["pkm", "pinyin", "tools", "test"]

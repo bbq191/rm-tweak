@@ -1,0 +1,5 @@
+#!/bin/sh
+# 书架 host CLI 入口。刻意用**系统 python3**（不进 uv/venv）：CLI 会 subprocess 调 Calibre 的
+# ebook-convert，其 `#!/usr/bin/env python3` 在 venv 里会被劫持即炸（阅读白皮书 §11.2 踩过）。
+# 纯 stdlib，零第三方依赖。
+exec /usr/bin/env python3 "$(dirname "$0")/../shelf_cli/__main__.py" "$@"

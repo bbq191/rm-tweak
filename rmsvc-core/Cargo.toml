@@ -1,0 +1,25 @@
+[package]
+name = "rmsvc-core"
+version = "0.1.0"
+edition = "2021"
+description = "reMarkable 设备端 Web 服务共享底座：XDG 路径、服务注册/发现、流式 multipart、资产仓库、HTTP 适配层、xochitl 注入、目录监听。2026-09-11 从 shelf/crates/shelf-core 正名搬顶层——shelf/notes/gateway 三方共用，不是 shelf 私有 crate。"
+license = "MIT"
+
+[dependencies]
+tiny_http = { version = "0.12", features = ["ssl-rustls"] }
+# 自签证书（首启生成，纯 Rust ring 后端）与密码哈希/Basic 认证
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "pem", "ring"] }
+sha2 = "0.11"
+time = "0.3"
+# mDNS 应答器需要 SO_REUSEADDR + 多播接口选择，std UdpSocket 不暴露
+socket2 = { version = "0.5", features = ["all"] }
+base64 = "0.22"
+ureq = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+inotify = { version = "0.11.5", default-features = false }
+pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac", "sha2"] }
+
+[dev-dependencies]
+tempfile = "3"

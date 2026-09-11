@@ -1,0 +1,20 @@
+/* 登录/改密页视觉体系对齐主页 style.css（2026-09-09 审计修：之前是独立硬编码色值，无暗色模式适配，
+   用户打开网页第一眼看到的登录页跟登进去之后的主界面像两套系统）。这两个页面走独立的 <style> 内联
+   （不经过 index.html 骨架，见 ui.rs::login_page/password_page），所以变量表在这里单独重复一份而不是
+   引用 style.css 的 :root——但取值必须跟 style.css 逐条保持一致，改一处要记得改另一处。 */
+:root{color-scheme:light dark;
+ --bg:#f6f7f9;--surface:#fff;--fg:#1a1c1e;--mute:#5b6169;--line:#dfe3e8;
+ --accent:#3257d0;--accent-fg:#fff;--bad:#c0362c;--shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05)}
+@media (prefers-color-scheme:dark){:root{
+ --bg:#16181c;--surface:#1e2126;--fg:#e6e8eb;--mute:#9aa2ad;--line:#333941;
+ --accent:#7d9bff;--accent-fg:#10131a;--bad:#ff8c80;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35)}}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif;margin:0;background:var(--bg);color:var(--fg);display:flex;min-height:100vh;align-items:center;justify-content:center}
+form{width:min(22em,90vw);background:var(--surface);border:1px solid var(--line);border-radius:.9em;padding:1.4em 1.6em;box-shadow:var(--shadow)}
+h1{font-size:1.2em;margin:0 0 .6em}
+label{display:block;margin:.7em 0 .2em;color:var(--mute);font-size:.92em}
+input{width:100%;box-sizing:border-box;font-size:1.05em;padding:.55em .6em;border:1px solid var(--line);border-radius:.5em;background:var(--surface);color:var(--fg)}
+button{margin-top:1em;width:100%;font-size:1em;padding:.55em;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:.5em;cursor:pointer;font-weight:600}
+.err{color:var(--bad);margin:.6em 0 0;min-height:1.2em}
+.small{font-size:.85em;color:var(--mute);margin-top:1em;line-height:1.5}
+a{color:var(--accent)}

@@ -1,0 +1,30 @@
+# shelf 书架：领域服务 + bookconv 的内部 workspace（仓库根仍不建 workspace）。
+# 2026-09-11：共享基座 crate 正名搬顶层 `../rmsvc-core`（原 crates/shelf-core，
+# 三条线共用，不再是 shelf 私有——notes/ 早就在依赖它，gateway/ 也依赖它）；
+# 网关本身也搬顶层 `../gateway`（原 services/shelf-gateway，它是 shelf/notes/
+# enhance 三条线共用的唯一前端，不该继续算"shelf 的一个服务"）。两者都不再是
+# 本 workspace 成员，各自独立 Cargo 项目，见各自 README。
+# 2026-09-11 第二轮：`wallpaper-serve`/`font-serve` 挪进 `../enhance/`（概念上更贴近
+# 系统增强，不是"书架内容管理"业务；wallpaper-serve 原依赖的 bookconv 两个屏幕尺寸
+# 常量已复制成本地值，不再跨线依赖 bookconv）。
+# 依赖方向单向无环：services/* → ../rmsvc-core；book-serve → bookconv。
+[workspace]
+resolver = "2"
+members = [
+    "crates/bookconv",
+    "services/book-serve",
+    "services/koreader-serve",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+# 与 reading/device-rs、knowledge/pkm 同款：设备端体积优先、全静态 musl。
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
+codegen-units = 1

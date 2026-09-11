@@ -1,0 +1,16 @@
+[Unit]
+Description=笔记·本：「笔记」tab + 条目库→设备笔记本/md 投影（loopback 8798）
+After=home.mount
+PartOf=shelf.target
+
+[Service]
+Type=simple
+ExecStart=/home/root/.local/bin/note-serve serve --bind 127.0.0.1:8798
+Restart=on-failure
+RestartSec=5
+CPUWeight=20
+MemoryMax=128M
+Nice=5
+
+[Install]
+WantedBy=shelf.target

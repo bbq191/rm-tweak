@@ -1,0 +1,14 @@
+# musl 全静态（首选，产品化）：rust-lld 自带链接器免外部 musl 工具链；ring 的 C 用 glibc
+# 的 aarch64-linux-gnu-gcc 编（产物 libc 无关、能链进 musl），故设 CC/AR。产物免疫设备 libc 版本。
+[target.aarch64-unknown-linux-musl]
+linker = "rust-lld"
+
+# gnu 动态（退路，动态链设备 glibc）
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+
+[env]
+CC_aarch64_unknown_linux_musl = "aarch64-linux-gnu-gcc"
+AR_aarch64_unknown_linux_musl = "aarch64-linux-gnu-ar"
+CC_aarch64_unknown_linux_gnu = "aarch64-linux-gnu-gcc"
+AR_aarch64_unknown_linux_gnu = "aarch64-linux-gnu-ar"

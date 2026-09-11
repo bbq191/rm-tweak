@@ -1,0 +1,28 @@
+[package]
+name = "gateway"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "设备端 Web 网关：shelf/notes/enhance 三条线共用的唯一入口（UI + /api/<service>/* 反向代理 + 服务发现）。2026-09-11 从 shelf/services/shelf-gateway 正名搬顶层——它服务三条线，不是 shelf 一个服务。"
+
+[[bin]]
+name = "gateway"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../rmsvc-core" }
+serde_json = "1"
+ureq = "2"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"
+base64 = "0.22"
+
+# 独立顶层 crate，不在任何 workspace 内；profile 跟 shelf/notes 同款：设备端体积优先、全静态 musl。
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
+codegen-units = 1

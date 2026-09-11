@@ -1,0 +1,6 @@
+# 同步到 koreader/fonts/ 的字体文件（每行一个路径，相对仓库根或绝对；# 注释）。
+# 字体文件本身不入库（见 .gitignore）。2026-09-11 起本机副本落 shelf/koreader/profile/
+# vendor-fonts/（原先写死指到 chinese-ime/fonts/，那份挪出仓库后不再适合当活跃路径依赖，
+# 改成 shelf 自己的本机字体缓存，按需重新放；该目录当前为空，跑同步前手动放两个字体文件）。
+shelf/koreader/profile/vendor-fonts/LXGWNeoZhiSongScreenFull.ttf
+shelf/koreader/profile/vendor-fonts/HanaMinB.ttf

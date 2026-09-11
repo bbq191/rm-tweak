@@ -1,0 +1,135 @@
+:root{color-scheme:light dark;
+ --bg:#f6f7f9;--surface:#fff;--surface2:#f0f2f5;--fg:#1a1c1e;--mute:#5b6169;--line:#dfe3e8;--line2:#eceef1;
+ --accent:#3257d0;--accent-fg:#fff;--ok:#1a7f37;--bad:#c0362c;--warn:#9a6700;--shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05)}
+@media (prefers-color-scheme:dark){:root{
+ --bg:#16181c;--surface:#1e2126;--surface2:#262a30;--fg:#e6e8eb;--mute:#9aa2ad;--line:#333941;--line2:#2a2f36;
+ --accent:#7d9bff;--accent-fg:#10131a;--ok:#5fce7f;--bad:#ff8c80;--warn:#e3b341;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif;margin:0;color:var(--fg);background:var(--bg);line-height:1.5;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+a{color:var(--accent)}
+/* 头部：纯色兜底（老 Safari 不认 color-mix 时头部仍不透明、正文滚过不透字）+ -webkit- 前缀让 iOS Safari 也模糊 */
+header{position:sticky;top:0;z-index:5;background:var(--surface);background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.7em 1.1em;display:flex;align-items:center;gap:.8em}
+header .logo{font-size:1.15em;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;gap:.4em}
+header .logo::before{content:"🌿";font-size:1.1em}
+header small{color:var(--mute)}
+header .links{margin-left:auto;display:flex;gap:.6em;font-size:.85em}
+/* 纯文字链接原来零 padding，触控热区约等于文字包围盒——补一点垂直/水平留白扩大热区，
+   不明显改变视觉间距（2026-09-09 审计发现，退出跟改密码/CA证书视觉权重一样但后果完全不同，
+   这里只解决"点不准"，误触仍靠各自的确认/无副作用兜底，不在这里额外加区分）。 */
+header .links a{color:var(--mute);text-decoration:none;padding:.3em .25em;display:inline-block}header .links a:hover{color:var(--accent)}
+nav{display:flex;gap:.4em;padding:.7em 1.1em;overflow-x:auto;background:var(--bg);position:sticky;top:3.1em;z-index:4;-webkit-overflow-scrolling:touch}
+nav button{border:1px solid transparent;background:var(--surface2);color:var(--mute);padding:.45em 1.05em;border-radius:2em;cursor:pointer;font-size:.95em;white-space:nowrap;transition:.15s}
+nav button:hover{color:var(--fg)}
+nav button.on{background:var(--accent);color:var(--accent-fg);font-weight:600;box-shadow:var(--shadow)}
+main{padding:1.1em;max-width:48em;margin:0 auto}
+section{display:none;animation:fade .2s ease}section.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:.9em;padding:1em 1.1em;box-shadow:var(--shadow);margin:.9em 0}
+h2{font-size:1.05em;margin:0 0 .1em}h3{font-size:.98em;margin:1.2em 0 .3em}
+.lead{color:var(--mute);font-size:.9em;margin:.1em 0 0}
+label.field{display:block;margin:.9em 0 .2em;font-size:.85em;color:var(--mute);font-weight:500}
+select,input[type=text]{font-size:1em;padding:.55em .6em;border:1px solid var(--line);border-radius:.5em;background:var(--surface);color:var(--fg);width:100%;max-width:100%}
+.row{display:flex;gap:.7em;align-items:center;flex-wrap:wrap;margin:.6em 0}
+/* 目标选择卡 */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:.6em;margin:.4em 0 .2em}
+@media(max-width:34em){.seg{grid-template-columns:1fr}}
+.seg label{position:relative;display:block;border:1.5px solid var(--line);border-radius:.7em;padding:.7em .8em;cursor:pointer;background:var(--surface);transition:.15s}
+.seg label:hover{border-color:var(--accent)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));box-shadow:var(--shadow)}
+.seg .t{font-weight:700;font-size:.98em}.seg .d{font-size:.82em;color:var(--mute);margin-top:.15em}
+.seg .fmt{font-size:.72em;color:var(--accent);margin-top:.35em;font-variant:tabular-nums}
+.opt-note{font-size:.82em;color:var(--mute);margin:.4em 0 0;padding:.5em .7em;background:var(--surface2);border-radius:.5em;border-left:3px solid var(--accent)}
+/* 命令块：字号跟正文同级、等宽、比 .opt-note 更高的对比度/权重——原来一段完整命令套在 .opt-note
+   里显示，跟「笔记」页 .entry-quote 那种"安静小字引用摘录"几乎是同一套视觉语言（同量级小字号+
+   同 mute 灰色+同浅底），命令是要人读要人抄的可操作内容，借用被动展示摘录的样式会显得不起眼、
+   字也偏小（2026-09-09 用户反馈）。整块实线边框（不是引用框那种只有左侧色条），内部横向滚动
+   兜底超长命令，不撑爆手机屏。 */
+.cmdblock{margin:.6em 0;border:1px solid var(--line);border-radius:.6em;overflow:hidden}
+.cmdblock code{display:block;padding:.6em .85em;font-size:.95em;line-height:1.5;background:var(--surface2);color:var(--fg);overflow-x:auto;white-space:pre;border-radius:0}
+.cmdblock code+code{border-top:1px solid var(--line)}
+.toggle{display:inline-flex;align-items:center;gap:.45em;font-size:.92em;cursor:pointer}
+.drop{border:2px dashed var(--line);border-radius:.8em;padding:1.6em 1em;text-align:center;color:var(--mute);margin:.9em 0;transition:.15s;cursor:pointer}
+.drop:hover,.drop.hi{border-color:var(--accent);color:var(--fg);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.drop .big{font-size:1.6em;display:block;margin-bottom:.2em;opacity:.7}
+ul.q{list-style:none;padding:0;margin:.6em 0}
+ul.q li{border:1px solid var(--line);border-radius:.6em;padding:.55em .8em;margin:.45em 0;background:var(--surface)}
+ul.q li.ok{border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}ul.q li.bad{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.name{font-weight:600;word-break:break-all}.msg{color:var(--mute);font-size:.88em;margin-top:.2em}.ok .msg{color:var(--ok)}.bad .msg{color:var(--bad)}
+progress{width:100%;height:.4em;margin:.35em 0;border:none;border-radius:1em;overflow:hidden}
+progress::-webkit-progress-bar{background:var(--surface2)}progress::-webkit-progress-value{background:var(--accent)}
+.btn{font-size:.95em;padding:.5em 1em;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:.5em;cursor:pointer;transition:.15s}
+/* 上传队列的"×"移除按钮：视觉上小、但触控热区不能跟着一起小（原来 padding 挤到约 17px 高，是全站
+   最小的可点元素，2026-09-09 审计发现）；用 min-width/height 撑热区，图形本身不放大。 */
+.btn.x{padding:.05em .45em;line-height:1;min-width:2.2em;min-height:2.2em}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn.pri:hover{filter:brightness(1.06)}.btn:disabled{opacity:.5;cursor:default}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.35em .9em;font-size:.92em;align-items:baseline}.kv b{color:var(--mute);font-weight:500}
+.list{list-style:none;padding:0;margin:.3em 0}
+.list li{display:flex;justify-content:space-between;gap:1em;align-items:center;padding:.5em .1em;border-bottom:1px solid var(--line2)}
+.small{font-size:.83em;color:var(--mute)}
+code{background:var(--surface2);padding:.1em .35em;border-radius:.3em;font-size:.88em}
+/* 对比表 */
+details.cmp{margin:.6em 0}
+details.cmp>summary{cursor:pointer;font-size:.9em;color:var(--accent);padding:.4em 0;user-select:none;list-style:none}
+details.cmp>summary::-webkit-details-marker{display:none}
+details.cmp>summary::before{content:"▸ ";transition:.15s;display:inline-block}
+details.cmp[open]>summary::before{transform:rotate(90deg)}
+.tblwrap{overflow-x:auto;margin:.4em 0;border:1px solid var(--line);border-radius:.6em}
+table.cmp{border-collapse:collapse;width:100%;font-size:.85em;min-width:34em}
+/* 34em 的下限在手机竖屏（约 360-430px）会强制横向滚动——用量表之前单独修过（见 [data-usagewrap]），
+   这里改成窄屏媒体查询统一处理所有 table.cmp（说明表/优化档位表等），宽屏不受影响（2026-09-09 审计发现）。 */
+@media (max-width:36em){table.cmp{min-width:0}}
+table.cmp th,table.cmp td{text-align:left;padding:.55em .7em;border-bottom:1px solid var(--line2);vertical-align:top}
+table.cmp thead th{background:var(--surface2);font-weight:600;position:sticky;top:0}
+table.cmp tbody th{font-weight:600;color:var(--fg);white-space:nowrap;background:var(--surface)}
+table.cmp tbody tr:last-child td{border-bottom:none}
+table.cmp .pick{color:var(--accent);font-weight:600}
+.badge{display:inline-block;font-size:.72em;padding:.05em .5em;border-radius:1em;background:var(--surface2);color:var(--mute);border:1px solid var(--line)}
+.badge[title]{cursor:help} /* 点了会 alert 出完整说明（app.js 全局委托），触屏摸不到 hover 时的替代入口 */
+.badge.on{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok);border-color:transparent}
+.badge.off{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad);border-color:transparent}
+.crumb a{color:var(--accent);text-decoration:none}.crumb a:hover{text-decoration:underline}
+/* 二级标签（把一个大页面拆成几屏，手机不长拉） */
+.subnav{display:flex;gap:.4em;overflow-x:auto;margin:.2em 0 1em;padding-bottom:.15em;-webkit-overflow-scrolling:touch}
+/* 垂直 padding 从 .32em 提到 .5em（2026-09-09 审计发现触控热区偏小）——笔记页常见两层 .subnav
+   叠着用，没有直接顶到 44px 建议值（那样两层叠加占屏太多，跟"整理"页几轮反馈压密度的方向冲突），
+   是密度和热区之间的折中，比原来小一大截已经好点。 */
+.subnav button{border:1px solid var(--line);background:var(--surface);color:var(--mute);padding:.5em .95em;border-radius:2em;cursor:pointer;font-size:.9em;white-space:nowrap;transition:.15s}
+.subnav button:hover{color:var(--fg)}
+.subnav button.on{background:var(--surface2);color:var(--fg);border-color:var(--accent);font-weight:600}
+.subpanel{display:none}.subpanel.on{display:block}
+/* 说明列表 */
+dl.help{margin:.3em 0 .2em}dl.help dt{font-weight:600;margin-top:.7em;color:var(--fg)}
+dl.help dd{margin:.2em 0 .2em;color:var(--mute);font-size:.9em;line-height:1.65}
+/* 笔记条目卡片：手写裁图 / 转写文本 / AI 问答三块视觉分区，手机堆叠、宽屏并排（见笔记白皮书 §03t） */
+.entry{border:1px solid var(--line);border-radius:.7em;padding:.75em .85em;margin:.6em 0;background:var(--surface)}
+.entry-head{display:flex;align-items:center;gap:.6em;margin-bottom:.5em;font-size:.85em;color:var(--mute)}
+.entry-body{display:flex;gap:.9em;flex-wrap:wrap;align-items:flex-start}
+.entry-crop{flex:0 0 9em;width:9em;max-width:42%}
+.entry-crop img{width:100%;display:block;border:1px solid var(--line);border-radius:.4em;background:#fff}
+.entry-crop .empty{display:flex;align-items:center;justify-content:center;height:6em;border:1px dashed var(--line);border-radius:.4em;color:var(--mute);font-size:.78em;text-align:center;padding:.4em}
+.entry-main{flex:1;min-width:13em;display:flex;flex-direction:column;gap:.5em}
+.entry-quote{font-size:.85em;color:var(--mute);border-left:3px solid var(--accent);padding:.4em .6em;background:var(--surface2);border-radius:0 .4em .4em 0}
+.entry-text{width:100%;box-sizing:border-box;font-size:.98em;padding:.6em .7em;border:1px solid var(--line);border-radius:.5em;background:var(--surface);color:var(--fg);resize:vertical;min-height:3.4em;font-family:inherit}
+.entry-text:focus{outline:none;border-color:var(--accent)}
+.entry-ops{display:flex;gap:.5em;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.entry-ops .grp{display:flex;gap:.5em;flex-wrap:wrap;align-items:center}
+.entry-ask{border-top:1px dashed var(--line2);padding-top:.55em;margin-top:.15em;display:flex;flex-direction:column;gap:.5em}
+.entry-ask .row{margin:0}
+.entry-answer{font-size:.88em;line-height:1.6;background:color-mix(in srgb,var(--accent) 7%,var(--surface));border:1px solid var(--line);border-radius:.5em;padding:.55em .75em;white-space:pre-wrap}
+.entry-answer b{color:var(--accent)}
+@media(max-width:30em){.entry-crop{flex:1 1 100%;width:100%;max-width:100%}.entry-crop img{max-height:11em;object-fit:contain}}
+/* 转写失败的条目（整理区第二轮反馈点 1，2026-09-08）：标红，跟正常条目一眼区分开，不用去翻转写折叠层 */
+.entry-failed{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.btn-bad{border-color:var(--bad);color:var(--bad)}
+.btn-bad:hover{background:color-mix(in srgb,var(--bad) 10%,var(--surface))}
+/* 回收站列表：紧凑一行，不需要完整卡片那么重 */
+.trash-item{display:flex;gap:.6em;align-items:flex-start;padding:.55em 0;border-bottom:1px solid var(--line2)}
+.trash-item:last-child{border-bottom:none}
+.trash-item .txt{flex:1;min-width:0;font-size:.9em}
+.trash-item .txt .q{color:var(--mute);font-size:.9em}
+/* 各模型用量表（管理台模型面板，点 2「彻底重做」）：字号收紧一点，避免这张卡片被表格撑得太宽 */
+[data-usagewrap] table.cmp{font-size:.82em;min-width:0}
+[data-usagewrap] th,[data-usagewrap] td{padding:.35em .5em}

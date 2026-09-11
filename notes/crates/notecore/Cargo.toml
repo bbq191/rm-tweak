@@ -1,0 +1,11 @@
+[package]
+name = "notecore"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "笔记线领域核心（纯函数、零 I/O）：条目/分区模型、勾画↔手写几何配对、簇哈希与增量合并、行首手写约定判定"
+
+[dependencies]
+rmv6 = { path = "../rmv6" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
