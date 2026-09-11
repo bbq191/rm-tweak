@@ -1,0 +1,18 @@
+[Unit]
+Description=笔记·转写：待转写手写裁片 → 视觉模型 → 草稿写回（loopback 8796）
+After=home.mount network-online.target
+Wants=network-online.target
+PartOf=shelf.target
+
+[Service]
+Type=simple
+ExecStart=/home/root/.local/bin/transcribe-serve serve --bind 127.0.0.1:8796
+Restart=on-failure
+RestartSec=5
+# 空闲阻塞在 ink-serve 事件流上零唤醒；调云是网络等待，CPU 轻。
+CPUWeight=20
+MemoryMax=128M
+Nice=5
+
+[Install]
+WantedBy=shelf.target

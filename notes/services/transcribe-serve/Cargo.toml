@@ -1,0 +1,22 @@
+[package]
+name = "transcribe-serve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "笔记·转写：取条目库里待转写的手写裁片 → 视觉模型（Qwen 缺省，OpenAI 兼容口可插拔）→ 草稿写回；从不覆盖校对文本"
+
+[[bin]]
+name = "transcribe-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../../rmsvc-core" }
+notecore = { path = "../../crates/notecore" }
+vendorcfg = { path = "../../crates/vendorcfg" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = "2"
+base64 = "0.22"
+
+[dev-dependencies]
+tempfile = "3"

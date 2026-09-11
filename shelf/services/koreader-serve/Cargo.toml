@@ -1,0 +1,18 @@
+[package]
+name = "koreader-serve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "书架·KOReader：从母版库落书到 books/、运行态、字体/词典、配置同步执行端"
+
+[[bin]]
+name = "koreader-serve"
+path = "src/main.rs"
+
+[dependencies]
+rmsvc-core = { path = "../../../rmsvc-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

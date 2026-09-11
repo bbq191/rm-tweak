@@ -1,0 +1,18 @@
+[Unit]
+Description=笔记·矿：监听书库，勾画+旁边手写→条目库（loopback 8795）
+# 二进制/数据在 /home，故依赖 home.mount；这是本服务自己的依赖，**不牵连 xochitl 本体**（红线）。
+After=home.mount
+PartOf=shelf.target
+
+[Service]
+Type=simple
+ExecStart=/home/root/.local/bin/ink-serve serve --bind 127.0.0.1:8795
+Restart=on-failure
+RestartSec=5
+# 空闲阻塞在 inotify 上零唤醒；摄取是短促 CPU 活，软限即可。
+CPUWeight=20
+MemoryMax=128M
+Nice=5
+
+[Install]
+WantedBy=shelf.target

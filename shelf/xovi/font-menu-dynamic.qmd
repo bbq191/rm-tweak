@@ -1,0 +1,82 @@
+; ─────────────────────────────────────────────────────────────────────────
+; font-menu-dynamic.qmd —— 阅读「文字与布局」字体菜单：按书架 fonts.json 动态追加字体（固件 3.28 线）
+;
+; 【做什么】取代 add-reading-fonts.qmd 的硬编码三项：读 /home/root/.local/share/shelf/fonts.json
+;   （font-serve 生成，= ~/.local/share/fonts/ 全部字体按家族归组；XDG 缺省值展开——qmd 的 XHR 只能写绝对路径），把里面每一项 append 进
+;   FormatFont.qml 的 fontModel（key=fontconfig 家族名，value=按 UI 语言取 names.cn/tw/en）。
+;   fonts.json 不存在（书架未装）→ 不追加。
+;
+; 【开关门控】仍读 reading-qol.json 的 fontEnhance（设置页「阅读字体增强」）；为假不追加。
+;
+; 【什么时候追加】① Component.onCompleted（首开）；② 菜单再次可见时（onVisibleChanged=true）**差量**追加
+;   fonts.json 里新出现的 key——这是"上传后免重启就能在菜单里看到"的假设 S-B，真机 spike 决定成败：
+;   .169 上 FormatFont 每进程只建一次、onCompleted 只触发一次（2026-08-28 坐实），visible 变化信号是否触发未验。
+;   渲染 worker 能否认新字体（S-A）与本 qmd 无关，由 fontconfig 决定。
+;
+; 【锚点核对（3.28.0.169，md5 3356dde7；3.28.0.172 的 FormatFont.qml 与 .169 逐字节相同）】Control#root > ColumnLayout > ListModel#fontModel（同 add-reading-fonts.qmd）。
+; 【真机】3.28.0.172 2026-09-05：qmldiff 应用干净，`SHELF-FONT: onCompleted lang=en appended=4 count=8`。
+; 【qmldiff 纪律】INSERT{} 块内是 QML，注释只能用 //；**不写 `({})` 对象字面量、handler 一律 `{ … }` 块**（否则整份 qmd
+;   "expected item assignment value token, got Some(Symbol('('))" 不应用）。改前先用 asivery/qmldiff CLI `apply-diffs` 离线实跑
+;   （reading-qol/README「离线验证管线」），它能一比一复现设备端的解析错误。
+; ─────────────────────────────────────────────────────────────────────────
+
+AFFECT /qml/device/view/documentview/FormatFont.qml
+    TRAVERSE Control[#root] > ColumnLayout > ListModel[#fontModel]
+        LOCATE AFTER ALL
+        INSERT {
+            // 去重表用数组当字典：qmldiff 解析不了 `({})`（3.28.0.172 真机 2026-09-05：
+            // "expected item assignment value token, got Some(Symbol('('))"，整份 qmd 不应用），数组字面量它认。
+            property var cjAdded: []
+            function cjLang() {
+                var s = "" + qsTranslate("SettingsModel", "Help")
+                      + qsTranslate("SettingsModel", "Cloud")
+                      + qsTranslate("SettingsModel", "Accessibility");
+                if (s.indexOf("幫") >= 0 || s.indexOf("雲") >= 0 || s.indexOf("礙") >= 0) return "tw";
+                if (s.indexOf("帮") >= 0 || s.indexOf("云") >= 0 || s.indexOf("碍") >= 0) return "cn";
+                return "en";
+            }
+            function cjRead(path) {
+                try {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("GET", path, false);
+                    xhr.send();
+                    return xhr.responseText;
+                } catch (e) { return ""; }
+            }
+            function cjFonts() {
+                var t = cjRead("file:///home/root/.local/share/shelf/fonts.json");
+                if (t && t.length > 0) {
+                    try { var j = JSON.parse(t); if (j && j.fonts) return j.fonts; } catch (e) {}
+                }
+                return []; // 书架未装/无 fonts.json → 不追加（无"内建"回退，2026-09-03）
+            }
+            function cjSync(reason) {
+                var t = cjRead("file:///home/root/.local/share/cangjie-ime/reading-qol.json");
+                var fe = false;
+                try { if (t && t.length > 0) fe = !!JSON.parse(t).fontEnhance; } catch (e) {}
+                if (!fe) { console.warn("SHELF-FONT: " + reason + " fontEnhance=false, skip"); return; }
+                var lng = cjLang();
+                var fonts = cjFonts();
+                var n = 0;
+                for (var i = 0; i < fonts.length; i++) {
+                    var f = fonts[i];
+                    if (!f || !f.key || cjAdded[f.key]) continue;
+                    var nm = (f.names && (f.names[lng] || f.names.en)) || f.key;
+                    fontModel.append({ key: f.key, value: nm });
+                    cjAdded[f.key] = true;
+                    n++;
+                }
+                console.warn("SHELF-FONT: " + reason + " lang=" + lng + " appended=" + n + " count=" + fontModel.count);
+            }
+            // handler 一律写成 `{ … }` 块：不带花括号的 `if (` 会让 qmldiff 报同一句解析错误（离线 CLI 二分坐实）。
+            Component.onCompleted: { cjSync("onCompleted") }
+        }
+    END TRAVERSE
+    TRAVERSE Control[#root]
+        LOCATE AFTER ALL
+        INSERT {
+            // 菜单再次可见 → 差量同步（S-B 假设，真机验证：journal 看 SHELF-FONT: visible 是否出现）
+            onVisibleChanged: { if (visible) fontModel.cjSync("visible") }
+        }
+    END TRAVERSE
+END AFFECT

@@ -1,0 +1,3 @@
+# StarDict 词典目录（每行：<名字> <本机目录>，目录内 .ifo/.idx/.dict(.dz)）。数据不入库。
+# oxford  /path/to/stardict-oxford
+# xdhyd   /path/to/stardict-xiandaihanyu

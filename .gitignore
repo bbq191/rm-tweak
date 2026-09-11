@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────
+# cang-jie（公开发行版）.gitignore
+#
+# 这是从私有开发仓库（完整历史）导出的一份干净快照，不带历史。原则跟私有仓库一致：只版本化
+# 「源码/脚本/文档/配置」，构建产物 + 大资源不入库。
+#
+# 文档白名单——只公开顶层 README.md + docs/ 下这五份文档，其余任何 .md 一律不进仓库（含各
+# 目录自己的 README、各项目线自己 docs/ 下的白皮书、PROVENANCE/FINDINGS 之类）：
+# ─────────────────────────────────────────────────────────────
+*.md
+!/README.md
+!/docs/README.en.md
+!/docs/INSTALL.md
+!/docs/INSTALL.en.md
+!/docs/DONATE.md
+!/docs/DONATE.en.md
+
+# docs/ 目录整个不进仓库（任意深度）——不只是白皮书 .md 本身，里面配的图（docs/diagrams/*.svg
+# 这类白皮书插图）也一起排除；2026-09-11 发现 shelf/docs/、notes/docs/ 底下的 svg 因为不是
+# .md、没被上面那条规则挡住，混进了第一版公开仓库，这条补上防止同类东西再漏进来。
+# ⚠ 2026-09-13：这条通配连顶层 docs/（放公开 INSTALL/DONATE/README.en 那份，2026-09-13 起
+# 存在）都一起挡了——那份是这次照私有仓库结构拆分出来的，必须公开，`!/docs/` 把顶层这一份摘
+# 出来（子目录 shelf/docs/、notes/docs/ 这类嵌套的仍然被 **/docs/ 挡住，不受影响）；顶层
+# docs/ 目录里除了上面白名单的五份 .md，别的文件仍然按其它规则各自过滤（这条只解开目录本身
+# 的排除，不代表目录里所有文件自动放行）。
+**/docs/
+!/docs/
+
+# 版权夹具——notes/testdata/renggu(_marks)/ 是真机测试用的真实商业小说原文（《人骨拼圖》）
+# 截图，私有开发仓库继续保留、对应单测继续用真实数据验证；公开发行版 2026-09-11 已经把这两份
+# 目录删了、依赖它们的单测也删了/改了（不依赖 fixture 的部分保留），这条规则防止以后从私有仓库
+# 同步代码时把它们连同原样的测试代码一起带回来。seven_styles/ 是占位内容、没有版权问题，不挡。
+notes/testdata/renggu/
+notes/testdata/renggu_marks/
+
+# ── Python（host 侧工具环境）──
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.python-version
+
+# ── Rust ──
+target/
+
+# ── C 构建产物（enhance/hl-snap、enhance/handwriting-stroke）──
+*.o
+*.a
+# 例外：两个 xovi 扩展的编译产物是故意提交进仓库的出货载荷（不用每次现建才能部署），
+# 别被下面的 *.so 通配吞掉。
+*.so
+*.so.*
+!enhance/hl-snap/hl-snap.so
+!enhance/handwriting-stroke/hw-stroke.so
+
+
+# ── OS / 编辑器 ──
+.DS_Store
+__MACOSX/
+._*
+*.swp
+*~
+*.bak
+*.orig

@@ -1,0 +1,8 @@
+[package]
+name = "rmv6"
+version.workspace = true
+edition.workspace = true
+license = "MIT"
+description = "reMarkable .rm v6 笔迹文件只读解析（笔记线地基；剥离移植自 remarkable_lines 0.1.3，见 PROVENANCE.md）"
+
+[dependencies]
